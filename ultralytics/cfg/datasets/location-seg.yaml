@@ -12,7 +12,8 @@
 #path: ../datasets/coco128-seg # dataset root dir
 #path: E:/dataset/seg-20v2/seg-20v2 # dataset root dir
 #path: E:/dataset/seg_datasets_20250413/seg_datasets_20250413
-path: D:/datasets/las_pic_seg/las_pic_seg
+# path: D:/datasets/las_pic_seg/las_pic_seg
+path: D:/datasets/meteraillabelsV/meteraillabelsV
 train: images/train # train images (relative to 'path') 128 images
 val: images/train # val images (relative to 'path') 128 images
 test: # test images (optional)
@@ -21,7 +22,7 @@ test: # test images (optional)
 names:
 #  0: cylinder
 #  1: cube
-  0: object
+  0: s
 #  1: cube
 #  2: cylinder
 #676 epochs completed in 17.516 hours.
