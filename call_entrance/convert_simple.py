@@ -120,7 +120,7 @@ def convert_json_to_yolo():
 
     # =================== 修改这里 ===================
     # JSON_DIR = r"E:\data"                    # 你的 JSON + 图像文件目录
-    JSON_DIR = r"E:\data_relabel"                    # 你的 JSON + 图像文件目录
+    JSON_DIR = r"/home/wang/datasets/data_relabel"                    # 你的 JSON + 图像文件目录
     OUTPUT_DIR = r"../fuel_detection_dataset"  # 输出目录
     RANDOM_SEED = 42                         # 随机种子（保证可复现）
     # ================================================
