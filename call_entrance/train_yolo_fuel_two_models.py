@@ -376,8 +376,14 @@ def train_resnet_for_fuel_type(fuel_type, fuel_type_name, detection_dataset_dir=
     print(f"📋 训练参数：")
     print(f"   - 模型: ResNet152（{fuel_type_name}类油表）")
     print(f"   - batch_size: {batch_size}（自适应数据量）")
-    print(f"   - 主干学习率: {build_optimizer(model).param_groups[0]['lr']:.6f}")
-    print(f"   - 新层学习率: {build_optimizer(model).param_groups[1]['lr']:.6f}")
+    current_optimizer = build_optimizer(model)
+    backbone_lr = next((group['lr'] for group in current_optimizer.param_groups if group['lr'] < 1e-3), None)
+    fc_lr = max(group['lr'] for group in current_optimizer.param_groups)
+    if backbone_lr is not None:
+        print(f"   - 主干学习率: {backbone_lr:.6f}")
+    else:
+        print(f"   - 主干学习率: 冻结中")
+    print(f"   - 新层学习率: {fc_lr:.6f}")
     print(f"   - weight_decay: 3e-4 ✅（改进）")
     print(f"   - Dropout: 0.5/0.4/0.3 ✅")
     if freeze_warmup_epochs > 0:
@@ -567,12 +573,13 @@ def train_yolo_classifier(yolo_dataset_dir="fuel_yolo_dataset"):
     return True
 
 
-def train(yolo_dataset_dir="fuel_yolo_dataset", detection_dataset_dir="fuel_detection_dataset"):
+def train(yolo_dataset_dir="fuel_yolo_dataset", detection_dataset_dir="fuel_detection_dataset", train_yolo=True):
     """主训练函数
 
     Args:
         yolo_dataset_dir: YOLO数据集目录（5列YOLO格式）
         detection_dataset_dir: 检测数据集目录（6列CNN格式）
+        train_yolo: 是否训练YOLO检测模型
     """
 
     print("\n" + "="*70)
@@ -583,9 +590,12 @@ def train(yolo_dataset_dir="fuel_yolo_dataset", detection_dataset_dir="fuel_dete
     print(f"   - ResNet数据集: {detection_dataset_dir}\n")
 
     # 第一步：YOLO检测
-    print("【第一步】训练YOLO检测 + 2分类油表类型\n")
-    if not train_yolo_classifier(yolo_dataset_dir):
-        return
+    if train_yolo:
+        print("【第一步】训练YOLO检测 + 2分类油表类型\n")
+        if not train_yolo_classifier(yolo_dataset_dir):
+            return
+    else:
+        print("【第一步】跳过YOLO检测训练，使用已训练好的模型\n")
 
     # 第二步：指针类ResNet
     print("\n【第二步】训练指针类油表的ResNet模型\n")
@@ -612,6 +622,7 @@ if __name__ == '__main__':
     # =================== 修改这里设置数据集路径 ===================
     YOLO_DATASET_DIR = "../fuel_yolo_dataset"  # YOLO训练数据集
     DETECTION_DATASET_DIR = "../fuel_detection_dataset"  # ResNet训练数据集
+    TRAIN_YOLO = False  # YOLO已训练完成时设为False，只训练ResNet
     # ============================================================
 
     print("\n" + "="*70)
@@ -627,4 +638,4 @@ if __name__ == '__main__':
     print("   ✅ ResNet根据YOLO的分类结果，选择合适的识别策略")
     print("   ✅ 指针类和格子类各有专用模型\n")
 
-    train(YOLO_DATASET_DIR, DETECTION_DATASET_DIR)
+    train(YOLO_DATASET_DIR, DETECTION_DATASET_DIR, train_yolo=TRAIN_YOLO)
