@@ -484,7 +484,7 @@ if __name__ == "__main__":
 
     DEFAULT_YOLO = r"./runs/detect/runs/fuel_yolo/detect_2class/weights/best.pt"
     DEFAULT_RESNET_POINTER = r"./models/resnet/pointer/fuel_resnet_pointer_model.pth"
-    DEFAULT_RESNET_GRID = r"../models/resnet/grid/fuel_resnet_grid_model.pth"
+    DEFAULT_RESNET_GRID = r"./models/resnet/grid/fuel_resnet_grid_model.pth"
     DEFAULT_CONF = 0.6
     DEFAULT_IMGSZ = 640
     DEFAULT_YOLO_TTA = 1
