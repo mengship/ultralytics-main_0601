@@ -474,7 +474,7 @@ if __name__ == "__main__":
     # =================== 修改这里设置默认路径 ===================
 
     # dt = '0521'
-    data_path = '/home/wang/datasets/20260602油量人工识别/AI没有识别结果'
+    data_path = '/home/wang/datasets/20260602油量人工识别/AI识别结果不准确'
     # ========== 默认值配置（可在此修改） ==========
     DEFAULT_SOURCE = data_path  # 默认输入目录
     DEFAULT_OUTDIR = data_path + 'predictv3_1TTA'  # 默认输出目录 TTA = Test Time Augmentation

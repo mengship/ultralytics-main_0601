@@ -480,17 +480,11 @@ def main(defaults):
 
 
 if __name__ == "__main__":
-    # =================== 修改这里设置默认路径 ===================
+    import sys
 
-    dt = '0521'
-    excelname = '0521识别错误'
-    # ========== 默认值配置（可在此修改） ==========
-    DEFAULT_SOURCE = 'E:/predict/'+ dt +'/'+ excelname  # 默认输入目录
-    DEFAULT_OUTDIR = 'E:/predict/'+ dt +'/'+ excelname + 'predictv3_1TTA'  # 默认输出目录 TTA = Test Time Augmentation
-
-    # DEFAULT_SOURCE = r"fuel_detection_dataset\test\images"
-    # DEFAULT_OUTDIR = r"results_two_stage"
-
+    # ========== 默认值配置（可通过命令行参数覆盖） ==========
+    DEFAULT_SOURCE = r"fuel_detection_dataset\test\images"  # 默认输入目录
+    DEFAULT_OUTDIR = r"results_two_stage_v2"  # 默认输出目录
     DEFAULT_YOLO = r"../runs/fuel_yolo/detect_2class/weights/best.pt"
     DEFAULT_RESNET_POINTER = r"../models/resnet/pointer/fuel_resnet_pointer_model.pth"
     DEFAULT_RESNET_GRID = r"../models/resnet/grid/fuel_resnet_grid_model.pth"
@@ -498,30 +492,122 @@ if __name__ == "__main__":
     DEFAULT_IMGSZ = 640
     DEFAULT_YOLO_TTA = 1
     DEFAULT_RESNET_TTA = 1
-    # ===========================================================
+    # ========================================================
+
+    # 解析命令行参数
+    if len(sys.argv) > 1:
+        # 如果提供了命令行参数
+        if sys.argv[1] in ['-h', '--help']:
+            print("\n" + "="*70)
+            print("预测脚本使用说明 (v2修复版)")
+            print("="*70)
+            print("\n用法:")
+            print("  python predict_two_stage_v2.py [输入路径] [输出路径] [选项]")
+            print("\n位置参数:")
+            print("  输入路径          图片文件或目录路径")
+            print("  输出路径          结果保存目录（可选）")
+            print("\n选项参数:")
+            print("  --conf FLOAT      YOLO置信度阈值 (默认: 0.6)")
+            print("  --imgsz INT       YOLO推理图片大小 (默认: 640)")
+            print("  --yolo-tta 0/1    YOLO旋转TTA开关 (默认: 1)")
+            print("  --resnet-tta 0/1  ResNet旋转TTA开关 (默认: 1)")
+            print("  --yolo PATH       YOLO模型路径")
+            print("  --resnet-pointer PATH   指针ResNet模型路径")
+            print("  --resnet-grid PATH      格子ResNet模型路径")
+            print("\n示例:")
+            print("  # 使用默认配置")
+            print("  python predict_two_stage_v2.py")
+            print()
+            print("  # 指定输入路径")
+            print("  python predict_two_stage_v2.py /path/to/images")
+            print()
+            print("  # 指定输入和输出路径")
+            print("  python predict_two_stage_v2.py /path/to/images /path/to/output")
+            print()
+            print("  # 自定义置信度和TTA")
+            print("  python predict_two_stage_v2.py /path/to/images --conf 0.5 --yolo-tta 0")
+            print()
+            print("  # Windows路径示例")
+            print("  python predict_two_stage_v2.py E:/predict/0521/测试图片")
+            print("  python predict_two_stage_v2.py E:/predict/0521/测试图片 E:/predict/0521/结果")
+            print("\n" + "="*70 + "\n")
+            sys.exit(0)
+
+        # 解析参数
+        source = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SOURCE
+        outdir = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') else DEFAULT_OUTDIR
+
+        # 解析选项参数
+        conf = DEFAULT_CONF
+        imgsz = DEFAULT_IMGSZ
+        yolo_tta = DEFAULT_YOLO_TTA
+        resnet_tta = DEFAULT_RESNET_TTA
+        yolo_model = DEFAULT_YOLO
+        resnet_pointer = DEFAULT_RESNET_POINTER
+        resnet_grid = DEFAULT_RESNET_GRID
+
+        i = 2 if outdir != DEFAULT_OUTDIR else 1
+        while i < len(sys.argv):
+            if sys.argv[i] == '--conf' and i + 1 < len(sys.argv):
+                conf = float(sys.argv[i + 1])
+                i += 2
+            elif sys.argv[i] == '--imgsz' and i + 1 < len(sys.argv):
+                imgsz = int(sys.argv[i + 1])
+                i += 2
+            elif sys.argv[i] == '--yolo-tta' and i + 1 < len(sys.argv):
+                yolo_tta = int(sys.argv[i + 1])
+                i += 2
+            elif sys.argv[i] == '--resnet-tta' and i + 1 < len(sys.argv):
+                resnet_tta = int(sys.argv[i + 1])
+                i += 2
+            elif sys.argv[i] == '--yolo' and i + 1 < len(sys.argv):
+                yolo_model = sys.argv[i + 1]
+                i += 2
+            elif sys.argv[i] == '--resnet-pointer' and i + 1 < len(sys.argv):
+                resnet_pointer = sys.argv[i + 1]
+                i += 2
+            elif sys.argv[i] == '--resnet-grid' and i + 1 < len(sys.argv):
+                resnet_grid = sys.argv[i + 1]
+                i += 2
+            else:
+                i += 1
+    else:
+        # 使用默认值
+        source = DEFAULT_SOURCE
+        outdir = DEFAULT_OUTDIR
+        conf = DEFAULT_CONF
+        imgsz = DEFAULT_IMGSZ
+        yolo_tta = DEFAULT_YOLO_TTA
+        resnet_tta = DEFAULT_RESNET_TTA
+        yolo_model = DEFAULT_YOLO
+        resnet_pointer = DEFAULT_RESNET_POINTER
+        resnet_grid = DEFAULT_RESNET_GRID
 
     default_cfg = {
-        "source": DEFAULT_SOURCE,
-        "outdir": DEFAULT_OUTDIR,
-        "yolo": DEFAULT_YOLO,
-        "resnet_pointer": DEFAULT_RESNET_POINTER,
-        "resnet_grid": DEFAULT_RESNET_GRID,
-        "conf": DEFAULT_CONF,
-        "imgsz": DEFAULT_IMGSZ,
-        "yolo_tta": DEFAULT_YOLO_TTA,
-        "resnet_tta": DEFAULT_RESNET_TTA,
+        "source": source,
+        "outdir": outdir,
+        "yolo": yolo_model,
+        "resnet_pointer": resnet_pointer,
+        "resnet_grid": resnet_grid,
+        "conf": conf,
+        "imgsz": imgsz,
+        "yolo_tta": yolo_tta,
+        "resnet_tta": resnet_tta,
     }
 
-    print("\n默认配置（可在 __main__ 中修改）：")
-    print(f"- source: {default_cfg['source']}")
-    print(f"- outdir: {default_cfg['outdir']}")
-    print(f"- yolo: {default_cfg['yolo']}")
-    print(f"- resnet_pointer: {default_cfg['resnet_pointer']}")
-    print(f"- resnet_grid: {default_cfg['resnet_grid']}\n")
-    print(f"- conf: {default_cfg['conf']}")
-    print(f"- imgsz: {default_cfg['imgsz']}")
-    print(f"- yolo_tta: {default_cfg['yolo_tta']}")
-    print(f"- resnet_tta: {default_cfg['resnet_tta']}\n")
+    print("\n" + "="*70)
+    print("预测配置 (v2修复版)")
+    print("="*70)
+    print(f"输入路径: {default_cfg['source']}")
+    print(f"输出路径: {default_cfg['outdir']}")
+    print(f"YOLO模型: {default_cfg['yolo']}")
+    print(f"ResNet-指针: {default_cfg['resnet_pointer']}")
+    print(f"ResNet-格子: {default_cfg['resnet_grid']}")
+    print(f"置信度阈值: {default_cfg['conf']}")
+    print(f"图片大小: {default_cfg['imgsz']}")
+    print(f"YOLO TTA: {'开启' if default_cfg['yolo_tta'] == 1 else '关闭'}")
+    print(f"ResNet TTA: {'开启(中位数)' if default_cfg['resnet_tta'] == 1 else '关闭'} ✅ v2修复")
+    print("="*70 + "\n")
 
     main(default_cfg)
 
