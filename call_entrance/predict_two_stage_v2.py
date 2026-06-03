@@ -315,6 +315,289 @@ def predict_fuel_with_rotation_tta(model, crop_bgr: np.ndarray, device: torch.de
     return float(np.median(preds))
 
 
+class FuelPredictor:
+    """
+    油量预测器（生产部署优化版）
+
+    一次加载模型，多次预测，避免重复加载开销。
+
+    Example:
+        # 初始化预测器（加载模型）
+        predictor = FuelPredictor(
+            yolo_model_path='runs/fuel_yolo/detect_2class/weights/best.pt',
+            resnet_pointer_path='models/resnet/pointer/fuel_resnet_pointer_model.pth',
+            resnet_grid_path='models/resnet/grid/fuel_resnet_grid_model.pth',
+            conf_threshold=0.6,
+            device='cuda:0'  # 或 'cpu'
+        )
+
+        # 预测多张图片
+        for img_path in image_list:
+            result = predictor.predict(img_path)
+            if result['success']:
+                print(f"{img_path}: {result['fuel_ratio']*100:.1f}%")
+    """
+
+    def __init__(
+        self,
+        yolo_model_path,
+        resnet_pointer_path,
+        resnet_grid_path,
+        conf_threshold=0.6,
+        imgsz=640,
+        device=None
+    ):
+        """
+        初始化预测器并加载模型
+
+        Args:
+            yolo_model_path: YOLO模型路径
+            resnet_pointer_path: 指针ResNet模型路径
+            resnet_grid_path: 格子ResNet模型路径
+            conf_threshold: YOLO置信度阈值（默认0.6）
+            imgsz: YOLO推理图片大小（默认640）
+            device: 推理设备（None则自动选择，或指定'cpu'/'cuda:0'）
+        """
+        from pathlib import Path
+
+        # 设备选择
+        if device is None:
+            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        elif isinstance(device, str):
+            self.device = torch.device(device)
+        else:
+            self.device = device
+
+        # 参数保存
+        self.conf_threshold = conf_threshold
+        self.imgsz = imgsz
+
+        # 检查模型文件
+        yolo_path = Path(yolo_model_path)
+        pointer_path = Path(resnet_pointer_path)
+        grid_path = Path(resnet_grid_path)
+
+        if not yolo_path.exists():
+            raise FileNotFoundError(f"YOLO模型不存在: {yolo_path}")
+        if not pointer_path.exists():
+            raise FileNotFoundError(f"指针ResNet模型不存在: {pointer_path}")
+        if not grid_path.exists():
+            raise FileNotFoundError(f"格子ResNet模型不存在: {grid_path}")
+
+        # 加载模型
+        print(f"🔧 正在加载模型...")
+        print(f"   设备: {self.device}")
+        print(f"   YOLO: {yolo_path.name}")
+        print(f"   ResNet-指针: {pointer_path.name}")
+        print(f"   ResNet-格子: {grid_path.name}")
+
+        self.yolo = YOLO(str(yolo_path))
+        self.pointer_model = load_resnet(pointer_path, self.device)
+        self.grid_model = load_resnet(grid_path, self.device)
+
+        print(f"✅ 模型加载完成\n")
+
+    def predict(self, image_path, use_yolo_tta=False, use_resnet_tta=False):
+        """
+        预测单张图片的油量
+
+        Args:
+            image_path: 图片路径（str或Path）
+            use_yolo_tta: 是否使用YOLO旋转TTA（默认False，加快速度）
+            use_resnet_tta: 是否使用ResNet旋转TTA（默认False，且pointer类会强制关闭）
+
+        Returns:
+            dict: {
+                'success': bool,           # 是否成功预测
+                'fuel_ratio': float,       # 油量比例 0.0~1.0
+                'confidence': float,       # YOLO检测置信度
+                'fuel_type': str,          # 油表类型 'pointer'或'grid'
+                'bbox': tuple,             # 检测框坐标 (x1, y1, x2, y2)
+                'error': str               # 错误信息（如果失败）
+            }
+        """
+        from pathlib import Path
+
+        try:
+            # 读取图片
+            img_path = Path(image_path)
+            if not img_path.exists():
+                return {'success': False, 'error': f'图片不存在: {img_path}'}
+
+            img = cv2.imread(str(img_path))
+            if img is None:
+                return {'success': False, 'error': f'图片读取失败: {img_path}'}
+
+            h, w = img.shape[:2]
+
+            # YOLO检测
+            best = detect_best_box_with_rotation_tta(
+                self.yolo, img, self.conf_threshold, self.imgsz, use_tta=use_yolo_tta
+            )
+
+            if best is None:
+                return {
+                    'success': False,
+                    'error': '未检测到油表',
+                    'fuel_ratio': None,
+                    'confidence': 0.0,
+                    'fuel_type': None,
+                    'bbox': None
+                }
+
+            # 裁剪框
+            x1, y1, x2, y2 = clamp_box(*best["xyxy"], w, h)
+            if x2 <= x1 or y2 <= y1:
+                return {'success': False, 'error': '检测框无效'}
+
+            # 贴边扩展
+            margin_left = x1
+            margin_top = y1
+            margin_right = w - x2
+            margin_bottom = h - y2
+
+            is_edge_touch = (margin_left < 10 or margin_top < 10 or
+                            margin_right < 10 or margin_bottom < 10)
+
+            if is_edge_touch:
+                x1, y1, x2, y2 = expand_box_if_edge_touching(
+                    x1, y1, x2, y2, h, w, expand_ratio=0.08
+                )
+
+            crop = img[y1:y2, x1:x2]
+
+            # 选择模型
+            cls_id = best["cls_id"]
+            if cls_id == 0:
+                fuel_type = "pointer"
+                model = self.pointer_model
+                # 指针类强制关闭TTA（避免旋转导致的语义错误）
+                use_tta = False
+            else:
+                fuel_type = "grid"
+                model = self.grid_model
+                use_tta = use_resnet_tta
+
+            # 预测油量
+            fuel = predict_fuel_with_rotation_tta(model, crop, self.device, use_tta=use_tta)
+            fuel = max(0.0, min(1.0, fuel))
+
+            return {
+                'success': True,
+                'fuel_ratio': float(fuel),
+                'confidence': float(best['conf']),
+                'fuel_type': fuel_type,
+                'bbox': (int(x1), int(y1), int(x2), int(y2)),
+                'error': None
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'预测异常: {str(e)}',
+                'fuel_ratio': None,
+                'confidence': 0.0,
+                'fuel_type': None,
+                'bbox': None
+            }
+
+    def predict_batch(self, image_paths, show_progress=True):
+        """
+        批量预测多张图片
+
+        Args:
+            image_paths: 图片路径列表
+            show_progress: 是否显示进度（默认True）
+
+        Returns:
+            list[dict]: 预测结果列表
+        """
+        results = []
+        total = len(image_paths)
+
+        for i, img_path in enumerate(image_paths, 1):
+            result = self.predict(img_path)
+            results.append(result)
+
+            if show_progress:
+                status = "✓" if result['success'] else "✗"
+                if result['success']:
+                    print(f"[{i}/{total}] {status} {Path(img_path).name}: "
+                          f"{result['fuel_ratio']*100:.1f}% (conf={result['confidence']:.2f})")
+                else:
+                    print(f"[{i}/{total}] {status} {Path(img_path).name}: {result['error']}")
+
+        return results
+
+
+def predict_single_image(
+    image_path,
+    yolo_model_path,
+    resnet_pointer_path,
+    resnet_grid_path,
+    conf_threshold=0.6,
+    imgsz=640,
+    device=None
+):
+    """
+    生产部署接口：预测单张图片的油量（简单版本，每次加载模型）
+
+    ⚠️ 注意：如果需要预测多张图片，建议使用 FuelPredictor 类，避免重复加载模型。
+
+    Args:
+        image_path: 图片路径（str或Path）
+        yolo_model_path: YOLO模型路径
+        resnet_pointer_path: 指针ResNet模型路径
+        resnet_grid_path: 格子ResNet模型路径
+        conf_threshold: YOLO置信度阈值（默认0.6）
+        imgsz: YOLO推理图片大小（默认640）
+        device: 推理设备（None则自动选择，或指定'cpu'/'cuda:0'）
+
+    Returns:
+        dict: {
+            'success': bool,           # 是否成功预测
+            'fuel_ratio': float,       # 油量比例 0.0~1.0
+            'confidence': float,       # YOLO检测置信度
+            'fuel_type': str,          # 油表类型 'pointer'或'grid'
+            'bbox': tuple,             # 检测框坐标 (x1, y1, x2, y2)
+            'error': str               # 错误信息（如果失败）
+        }
+
+    Example:
+        result = predict_single_image(
+            '/path/to/image.jpg',
+            'models/yolo/best.pt',
+            'models/resnet/pointer/model.pth',
+            'models/resnet/grid/model.pth'
+        )
+
+        if result['success']:
+            print(f"油量: {result['fuel_ratio']*100:.1f}%")
+            print(f"置信度: {result['confidence']:.2f}")
+        else:
+            print(f"预测失败: {result['error']}")
+    """
+    try:
+        predictor = FuelPredictor(
+            yolo_model_path=yolo_model_path,
+            resnet_pointer_path=resnet_pointer_path,
+            resnet_grid_path=resnet_grid_path,
+            conf_threshold=conf_threshold,
+            imgsz=imgsz,
+            device=device
+        )
+        return predictor.predict(image_path)
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'初始化失败: {str(e)}',
+            'fuel_ratio': None,
+            'confidence': 0.0,
+            'fuel_type': None,
+            'bbox': None
+        }
+
+
 def save_results(rows, csv_path: Path, xlsx_path: Path):
     header = ["image", "status", "fuel_type", "conf", "fuel_ratio", "x1", "y1", "x2", "y2"]
 
@@ -437,12 +720,16 @@ def main(defaults):
             fuel_type = "pointer"
             model = pointer_model
             color = (0, 255, 0)
+            # 指针类油表不使用旋转TTA（旋转会改变指针语义）
+            use_resnet_tta = False
         else:
             fuel_type = "grid"
             model = grid_model
             color = (255, 0, 0)
+            # 格子类油表可以使用旋转TTA
+            use_resnet_tta = (args.resnet_tta == 1)
 
-        fuel = predict_fuel_with_rotation_tta(model, crop, device, use_tta=(args.resnet_tta == 1))
+        fuel = predict_fuel_with_rotation_tta(model, crop, device, use_tta=use_resnet_tta)
         fuel = max(0.0, min(1.0, fuel))
 
         label_top = f"{fuel_type} conf={best['conf']:.2f}"
@@ -617,3 +904,5 @@ if __name__ == "__main__":
 
     main(default_cfg)
 # python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI没有识别结果/ /home/wang/datasets/20260602油量人工识别/AI没有识别结果0603/ --conf 0.5 --yolo-tta 1 --resnet-tta 1
+# python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI识别结果不准确/ /home/wang/datasets/20260602油量人工识别/AI识别结果不准确0603  --conf 0.5 --yolo-tta 1 --resnet-tta 0
+# 2026-06-02_CCF5784.jpg 2026-06-02_CCF6443.jpg 2026-06-02_NHF4023.jpg 2026-06-02_NKH1007.jpg 2026-06-02_NKN5509.jpg 2026-06-02_NKN5525.jpg
