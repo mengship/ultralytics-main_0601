@@ -51,7 +51,8 @@ def safe_text(value, fallback):
     return re.sub(r'[\\/:*?"<>|]', '_', text)
 
 
-def download_images(excel_file, output_dir, sheet_name=0, url_column='url'):
+def download_images(excel_file, output_dir, sheet_name=0, url_column='url',
+                   filter_column=None, filter_value=None):
     """下载图片
 
     Args:
@@ -60,6 +61,8 @@ def download_images(excel_file, output_dir, sheet_name=0, url_column='url'):
         sheet_name: Sheet页名称或索引（默认为0，即第一个sheet）
                    可以是sheet名称字符串 或 sheet索引整数
         url_column: URL所在的列名（默认为'url'）
+        filter_column: 过滤列名（可选，例如'人工检查结果'）
+        filter_value: 过滤值（可选，例如'AI没有识别结果'）
     """
 
     print("\n" + "="*70)
@@ -68,6 +71,8 @@ def download_images(excel_file, output_dir, sheet_name=0, url_column='url'):
     print(f"📄 Excel文件: {excel_file}")
     print(f"📊 Sheet页: {sheet_name}")
     print(f"📍 URL列名: {url_column}")
+    if filter_column and filter_value:
+        print(f"🔍 过滤条件: {filter_column} = '{filter_value}'")
     print(f"📁 输出目录: {output_dir}\n")
 
     # 检查Excel文件是否存在
@@ -93,6 +98,26 @@ def download_images(excel_file, output_dir, sheet_name=0, url_column='url'):
         print(f"❌ 错误：列 '{url_column}' 不存在")
         print(f"   可用的列: {list(df.columns)}")
         return
+
+    # 检查过滤列是否存在（如果指定了过滤条件）
+    if filter_column:
+        if filter_column not in df.columns:
+            print(f"❌ 错误：过滤列 '{filter_column}' 不存在")
+            print(f"   可用的列: {list(df.columns)}")
+            return
+
+        # 应用过滤条件
+        original_count = len(df)
+        df = df[df[filter_column] == filter_value].copy()
+        filtered_count = len(df)
+        print(f"🔍 过滤结果: {original_count} 行 → {filtered_count} 行（匹配 '{filter_value}'）\n")
+
+        if filtered_count == 0:
+            print(f"⚠️  警告：没有符合过滤条件的数据")
+            return
+
+        # 如果有过滤条件，创建子目录
+        output_dir = os.path.join(output_dir, filter_value)
 
     # 创建输出目录
     os.makedirs(output_dir, exist_ok=True)
@@ -142,14 +167,18 @@ def download_images(excel_file, output_dir, sheet_name=0, url_column='url'):
 
 if __name__ == '__main__':
     # =================== 修改这里设置Excel文件、输出目录、Sheet页和URL列名 ===================
-    dt='0521'
+    # dt='0521'
 
-    excelname ='0521识别错误'
-    EXCEL_FILE = 'E:/predict/'+ dt +'/'+ excelname +'.xlsx'  # Excel文件路径
-    OUTPUT_DIR = 'E:/predict/'+ dt +'/'+ excelname          # 输出目录
-    SHEET_NAME = 0                                        # Sheet页（0=第一个，或输入sheet名称）
-    URL_COLUMN = 'img_path'                                    # URL所在的列名（默认'url'，可改为其他列名）
+    excelname ='20260602油量人工识别'
+    EXCEL_FILE = '/Users/flash/Documents/Data_Work/99_临时中转站/0602训练油表图片/'+ excelname +'.xlsx'  # Excel文件路径
+    OUTPUT_DIR = '/Users/flash/Documents/Data_Work/99_临时中转站/0602训练油表图片/'+ excelname          # 输出目录
+    SHEET_NAME = 'Sheet1'                                        # Sheet页（0=第一个，或输入sheet名称）
+    URL_COLUMN = '盘点照片'                                    # URL所在的列名（默认'url'，可改为其他列名）
 
+    # 过滤条件（可选）
+    FILTER_COLUMN = '人工检查结果'                              # 过滤列名，设为None则不过滤
+    FILTER_VALUE = 'AI识别结果不准确'                            # 过滤值，仅当FILTER_COLUMN不为None时生效
+    # AI没有识别结果
     # 白班示例
     # excelname = '0514白夜班下班打卡'
     # SHEET_NAME = '白班打卡'                         # Sheet页名称 白班
@@ -170,6 +199,9 @@ if __name__ == '__main__':
     #   SHEET_NAME = 'Sheet1' # 读取名称为'Sheet1'的sheet
     #   URL_COLUMN = 'url'             # URL列名
     #   URL_COLUMN = '下班里程图片'    # 或其他列名
+    #   FILTER_COLUMN = '人工检查结果'  # 过滤列名
+    #   FILTER_VALUE = 'AI没有识别结果' # 过滤值
+    #   FILTER_COLUMN = None           # 设为None则不过滤
     # =========================================================================
 
     print("\n" + "="*70)
@@ -179,6 +211,10 @@ if __name__ == '__main__':
     print(f"   ├─ Excel文件: {EXCEL_FILE}")
     print(f"   ├─ Sheet页: {SHEET_NAME}")
     print(f"   ├─ URL列名: {URL_COLUMN}")
+    if FILTER_COLUMN and FILTER_VALUE:
+        print(f"   ├─ 过滤列名: {FILTER_COLUMN}")
+        print(f"   ├─ 过滤值: {FILTER_VALUE}")
     print(f"   └─ 输出目录: {OUTPUT_DIR}\n")
 
-    download_images(EXCEL_FILE, OUTPUT_DIR, SHEET_NAME, URL_COLUMN)
+    download_images(EXCEL_FILE, OUTPUT_DIR, SHEET_NAME, URL_COLUMN,
+                   FILTER_COLUMN, FILTER_VALUE)
