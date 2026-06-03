@@ -53,6 +53,37 @@ matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 
+def resize_with_padding(img, target_size=224, fill_value=128):
+    """
+    保持宽高比resize，不变形（v2修复：避免拉伸）
+
+    Args:
+        img: 输入图片 (H, W, C)
+        target_size: 目标尺寸（正方形）
+        fill_value: 填充值（灰色）
+
+    Returns:
+        resized_img: (target_size, target_size, C)
+    """
+    h, w = img.shape[:2]
+    max_side = max(h, w)
+
+    # 创建正方形画布
+    if len(img.shape) == 3:
+        square = np.full((max_side, max_side, img.shape[2]), fill_value, dtype=img.dtype)
+    else:
+        square = np.full((max_side, max_side), fill_value, dtype=img.dtype)
+
+    # 将图片居中放置
+    y_offset = (max_side - h) // 2
+    x_offset = (max_side - w) // 2
+    square[y_offset:y_offset+h, x_offset:x_offset+w] = img
+
+    # Resize到目标大小
+    resized = cv2.resize(square, (target_size, target_size), interpolation=cv2.INTER_LINEAR)
+    return resized
+
+
 class FuelTypeDataset(Dataset):
     """根据油表类型裁剪和加载数据（指针类或格子类）"""
 
@@ -149,13 +180,14 @@ class FuelTypeDataset(Dataset):
         else:
             crop = img_rgb[y1:y2, x1:x2]
 
-        # 确保大小完全相同
-        crop_resized = cv2.resize(crop, (self.imgsz, self.imgsz), interpolation=cv2.INTER_LINEAR)
+        # ✅ v2修复：使用保持宽高比的resize（不变形）
+        crop_resized = resize_with_padding(crop, target_size=self.imgsz, fill_value=128)
 
         if self.is_train:
             crop_resized = self._augment(crop_resized)
+            # 增强后确保尺寸正确
             if crop_resized.shape[0] != self.imgsz or crop_resized.shape[1] != self.imgsz:
-                crop_resized = cv2.resize(crop_resized, (self.imgsz, self.imgsz), interpolation=cv2.INTER_LINEAR)
+                crop_resized = resize_with_padding(crop_resized, target_size=self.imgsz, fill_value=128)
 
         img_tensor = torch.from_numpy(crop_resized).float() / 255.0
         img_tensor = img_tensor.permute(2, 0, 1)

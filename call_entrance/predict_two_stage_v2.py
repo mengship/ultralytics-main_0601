@@ -177,9 +177,43 @@ def load_resnet(model_path: Path, device: torch.device):
     return model
 
 
+def resize_with_padding(img, target_size=224, fill_value=128):
+    """
+    保持宽高比resize，不变形
+
+    Args:
+        img: 输入图片 (H, W, C)
+        target_size: 目标尺寸（正方形）
+        fill_value: 填充值（灰色）
+
+    Returns:
+        resized_img: (target_size, target_size, C)
+    """
+    h, w = img.shape[:2]
+    max_side = max(h, w)
+
+    # 创建正方形画布
+    if len(img.shape) == 3:
+        square = np.full((max_side, max_side, img.shape[2]), fill_value, dtype=img.dtype)
+    else:
+        square = np.full((max_side, max_side), fill_value, dtype=img.dtype)
+
+    # 将图片居中放置
+    y_offset = (max_side - h) // 2
+    x_offset = (max_side - w) // 2
+    square[y_offset:y_offset+h, x_offset:x_offset+w] = img
+
+    # Resize到目标大小
+    resized = cv2.resize(square, (target_size, target_size), interpolation=cv2.INTER_LINEAR)
+    return resized
+
+
 def preprocess_crop(crop_bgr: np.ndarray):
     crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-    crop_rgb = cv2.resize(crop_rgb, (224, 224), interpolation=cv2.INTER_LINEAR)
+
+    # ✅ 改用保持宽高比的resize（不变形）
+    crop_rgb = resize_with_padding(crop_rgb, target_size=224, fill_value=128)
+
     x = torch.from_numpy(crop_rgb).float() / 255.0
     x = x.permute(2, 0, 1)
 
