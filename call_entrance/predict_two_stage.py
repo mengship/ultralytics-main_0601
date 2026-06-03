@@ -473,16 +473,16 @@ def main(defaults):
 if __name__ == "__main__":
     # =================== 修改这里设置默认路径 ===================
 
-    dt = '0521'
-    excelname = '0521识别错误'
+    # dt = '0521'
+    data_path = '/home/wang/datasets/20260602油量人工识别/AI没有识别结果'
     # ========== 默认值配置（可在此修改） ==========
-    DEFAULT_SOURCE = 'E:/predict/'+ dt +'/'+ excelname  # 默认输入目录
-    DEFAULT_OUTDIR = 'E:/predict/'+ dt +'/'+ excelname + 'predictv3_1TTA'  # 默认输出目录 TTA = Test Time Augmentation
+    DEFAULT_SOURCE = data_path  # 默认输入目录
+    DEFAULT_OUTDIR = data_path + 'predictv3_1TTA'  # 默认输出目录 TTA = Test Time Augmentation
 
     # DEFAULT_SOURCE = r"fuel_detection_dataset\test\images"
     # DEFAULT_OUTDIR = r"results_two_stage"
 
-    DEFAULT_YOLO = r"../runs/fuel_yolo/detect_2class/weights/best.pt"
+    DEFAULT_YOLO = r"../runs/detect/runs/fuel_yolo/detect_2class/weights/best.pt"
     DEFAULT_RESNET_POINTER = r"../models/resnet/pointer/fuel_resnet_pointer_model.pth"
     DEFAULT_RESNET_GRID = r"../models/resnet/grid/fuel_resnet_grid_model.pth"
     DEFAULT_CONF = 0.6
