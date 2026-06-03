@@ -485,7 +485,7 @@ if __name__ == "__main__":
     # ========== 默认值配置（可通过命令行参数覆盖） ==========
     DEFAULT_SOURCE = r"fuel_detection_dataset\test\images"  # 默认输入目录
     DEFAULT_OUTDIR = r"results_two_stage_v2"  # 默认输出目录
-    DEFAULT_YOLO = r"./runs/fuel_yolo/detect_2class/weights/best.pt"
+    DEFAULT_YOLO = r"./runs/detect/runs/fuel_yolo/detect_2class/weights/best.pt"
     DEFAULT_RESNET_POINTER = r"./models/resnet/pointer/fuel_resnet_pointer_model.pth"
     DEFAULT_RESNET_GRID = r"./models/resnet/grid/fuel_resnet_grid_model.pth"
     DEFAULT_CONF = 0.6
