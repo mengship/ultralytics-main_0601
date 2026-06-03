@@ -485,9 +485,9 @@ if __name__ == "__main__":
     # ========== 默认值配置（可通过命令行参数覆盖） ==========
     DEFAULT_SOURCE = r"fuel_detection_dataset\test\images"  # 默认输入目录
     DEFAULT_OUTDIR = r"results_two_stage_v2"  # 默认输出目录
-    DEFAULT_YOLO = r"../runs/fuel_yolo/detect_2class/weights/best.pt"
-    DEFAULT_RESNET_POINTER = r"../models/resnet/pointer/fuel_resnet_pointer_model.pth"
-    DEFAULT_RESNET_GRID = r"../models/resnet/grid/fuel_resnet_grid_model.pth"
+    DEFAULT_YOLO = r"./runs/fuel_yolo/detect_2class/weights/best.pt"
+    DEFAULT_RESNET_POINTER = r"./models/resnet/pointer/fuel_resnet_pointer_model.pth"
+    DEFAULT_RESNET_GRID = r"./models/resnet/grid/fuel_resnet_grid_model.pth"
     DEFAULT_CONF = 0.6
     DEFAULT_IMGSZ = 640
     DEFAULT_YOLO_TTA = 1
@@ -609,5 +609,11 @@ if __name__ == "__main__":
     print(f"ResNet TTA: {'开启(中位数)' if default_cfg['resnet_tta'] == 1 else '关闭'} ✅ v2修复")
     print("="*70 + "\n")
 
-    main(default_cfg)
+    # 移除已处理的位置参数，避免argparse重复解析
+    if len(sys.argv) > 1:
+        # 保留脚本名和选项参数，移除位置参数
+        num_positional = 2 if outdir != DEFAULT_OUTDIR else 1
+        sys.argv = [sys.argv[0]] + [arg for arg in sys.argv[1+num_positional:] if arg.startswith('--') or (sys.argv.index(arg) > 0 and sys.argv[sys.argv.index(arg)-1].startswith('--'))]
 
+    main(default_cfg)
+# python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI没有识别结果/ /home/wang/datasets/20260602油量人工识别/AI没有识别结果0603/ --conf 0.5 --yolo-tta 1 --resnet-tta 1
