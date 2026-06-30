@@ -34,6 +34,7 @@ except Exception:
 
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+RESNET_INPUT_SIZE = 320
 
 
 def expand_box_if_edge_touching(x1, y1, x2, y2, img_h, img_w, expand_ratio=0.1):
@@ -177,7 +178,7 @@ def load_resnet(model_path: Path, device: torch.device):
     return model
 
 
-def resize_with_padding(img, target_size=224, fill_value=128):
+def resize_with_padding(img, target_size=RESNET_INPUT_SIZE, fill_value=128):
     """
     保持宽高比resize，不变形
 
@@ -212,7 +213,7 @@ def preprocess_crop(crop_bgr: np.ndarray):
     crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
 
     # ✅ 改用保持宽高比的resize（不变形）
-    crop_rgb = resize_with_padding(crop_rgb, target_size=224, fill_value=128)
+    crop_rgb = resize_with_padding(crop_rgb, target_size=RESNET_INPUT_SIZE, fill_value=128)
 
     x = torch.from_numpy(crop_rgb).float() / 255.0
     x = x.permute(2, 0, 1)
@@ -938,5 +939,7 @@ if __name__ == "__main__":
 
     main(default_cfg)
 # python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI没有识别结果/ /home/wang/datasets/20260602油量人工识别/AI没有识别结果0603/ --conf 0.5 --yolo-tta 1 --resnet-tta 1
-# python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI识别结果不准确/ /home/wang/datasets/20260602油量人工识别/AI识别结果不准确0603  --conf 0.5 --yolo-tta 1 --resnet-tta 0
+# python predict_two_stage_v2.py /home/wang/datasets/20260602油量人工识别/AI识别结果不准确/ /home/wang/datasets/20260602油量人工识别/AI识别结果不准确0604  --conf 0.5 --yolo-tta 1 --resnet-tta 0
 # 2026-06-02_CCF5784.jpg 2026-06-02_CCF6443.jpg 2026-06-02_NHF4023.jpg 2026-06-02_NKH1007.jpg 2026-06-02_NKN5509.jpg 2026-06-02_NKN5525.jpg
+
+# python predict_two_stage_v2.py /home/wang/datasets/20260604油量人工识别/AI识别结果不准确/ /home/wang/datasets/20260604油量人工识别/AI识别结果不准确0604 --resnet-tta 0

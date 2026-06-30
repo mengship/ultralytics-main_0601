@@ -169,9 +169,9 @@ if __name__ == '__main__':
     # =================== 修改这里设置Excel文件、输出目录、Sheet页和URL列名 ===================
     # dt='0521'
 
-    excelname ='20260602油量人工识别'
-    EXCEL_FILE = '/Users/flash/Documents/Data_Work/99_临时中转站/0602训练油表图片/'+ excelname +'.xlsx'  # Excel文件路径
-    OUTPUT_DIR = '/Users/flash/Documents/Data_Work/99_临时中转站/0602训练油表图片/'+ excelname          # 输出目录
+    excelname ='20260604油量人工识别'
+    EXCEL_FILE = '/Users/flash/Documents/Data_Work/99_临时中转站/20260604_油表识别/'+ excelname +'.xlsx'  # Excel文件路径
+    OUTPUT_DIR = '/Users/flash/Documents/Data_Work/99_临时中转站/20260604_油表识别/'+ excelname          # 输出目录
     SHEET_NAME = 'Sheet1'                                        # Sheet页（0=第一个，或输入sheet名称）
     URL_COLUMN = '盘点照片'                                    # URL所在的列名（默认'url'，可改为其他列名）
 

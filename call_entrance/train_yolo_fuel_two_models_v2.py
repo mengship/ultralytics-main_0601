@@ -52,8 +52,10 @@ from torchvision.models import ResNet152_Weights
 matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
 
+RESNET_INPUT_SIZE = 320
 
-def resize_with_padding(img, target_size=224, fill_value=128):
+
+def resize_with_padding(img, target_size=RESNET_INPUT_SIZE, fill_value=128):
     """
     保持宽高比resize，不变形（v2修复：避免拉伸）
 
@@ -87,7 +89,7 @@ def resize_with_padding(img, target_size=224, fill_value=128):
 class FuelTypeDataset(Dataset):
     """根据油表类型裁剪和加载数据（指针类或格子类）"""
 
-    def __init__(self, dataset_dir, fuel_type, split='train', imgsz=224):
+    def __init__(self, dataset_dir, fuel_type, split='train', imgsz=RESNET_INPUT_SIZE):
         """
         Args:
             dataset_dir: 数据集根目录
@@ -330,8 +332,8 @@ def train_resnet_for_fuel_type(fuel_type, fuel_type_name, detection_dataset_dir=
     print(f"🖥️  使用设备: {device}\n")
 
     # 加载对应类型的数据集
-    train_dataset = FuelTypeDataset(detection_dataset_dir, fuel_type, 'train')
-    val_dataset = FuelTypeDataset(detection_dataset_dir, fuel_type, 'val')
+    train_dataset = FuelTypeDataset(detection_dataset_dir, fuel_type, 'train', imgsz=RESNET_INPUT_SIZE)
+    val_dataset = FuelTypeDataset(detection_dataset_dir, fuel_type, 'val', imgsz=RESNET_INPUT_SIZE)
 
     print(f"📊 {fuel_type_name}类训练集: {len(train_dataset)}, 验证集: {len(val_dataset)}\n")
 
@@ -426,6 +428,7 @@ def train_resnet_for_fuel_type(fuel_type, fuel_type_name, detection_dataset_dir=
     print(f"开始训练 ResNet152-{fuel_type_name}，最多 {epochs} 个 epoch...\n")
     print(f"📋 训练参数：")
     print(f"   - 模型: ResNet152（{fuel_type_name}类油表）")
+    print(f"   - 输入尺寸: {RESNET_INPUT_SIZE}x{RESNET_INPUT_SIZE}")
     print(f"   - batch_size: {batch_size}（自适应数据量）")
     current_optimizer = build_optimizer(model)
     backbone_lr = next((group['lr'] for group in current_optimizer.param_groups if group['lr'] < 1e-3), None)
@@ -579,7 +582,8 @@ def train_yolo_classifier(yolo_dataset_dir="fuel_yolo_dataset"):
     print(f"   - 类别0: 指针类油表")
     print(f"   - 类别1: 格子类油表")
     print(f"   - Epochs: 500")
-    print(f"   - Patience: 50\n")
+    print(f"   - Patience: 100")
+    print(f"   - 镜像翻转增强: 关闭（仪表盘方向不对称，镜像会制造错误样本）\n")
 
     yolo_model = YOLO('../yolo11m.pt')
 
@@ -606,8 +610,8 @@ def train_yolo_classifier(yolo_dataset_dir="fuel_yolo_dataset"):
         weight_decay=0.0005,
         dropout=0.15,
         mosaic=0.5,
-        flipud=0.1,
-        fliplr=0.5,
+        flipud=0.0,  # 关闭上下翻转：仪表盘读数/文字方向不适合镜像增强
+        fliplr=0.0,  # 关闭左右翻转：左右镜像会改变指针/刻度的真实语义
         hsv_h=0.015,
         hsv_s=0.4,
         hsv_v=0.25,
