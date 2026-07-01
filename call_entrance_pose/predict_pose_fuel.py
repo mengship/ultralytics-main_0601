@@ -35,8 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default=None)
     parser.add_argument(
         "--direction",
-        choices=("tip_side", "auto", "clockwise", "counterclockwise"),
-        default="tip_side",
+        choices=("max_full_span", "tip_side", "auto", "clockwise", "counterclockwise"),
+        default="max_full_span",
         help="Angle direction rule from empty to tip/full in image coordinates.",
     )
     parser.add_argument("--output-csv", default="call_entrance_pose/pose_fuel_predictions.csv")
@@ -92,13 +92,23 @@ def choose_tip_side_direction(tip: float, empty: float, full: float) -> str:
     return "clockwise" if clockwise_offset <= counterclockwise_offset else "counterclockwise"
 
 
-def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = "tip_side") -> Dict[str, float | str | bool]:
+def choose_max_full_span_direction(empty: float, full: float) -> str:
+    """Choose the direction with the larger empty-to-full angle."""
+    clockwise_span = wrap_positive(full - empty)
+    counterclockwise_span = wrap_positive(empty - full)
+    return "clockwise" if clockwise_span >= counterclockwise_span else "counterclockwise"
+
+
+def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = "max_full_span") -> Dict[str, float | str | bool]:
     center = points["center"]
     tip_angle = angle_of(points["tip"], center)
     empty_angle = angle_of(points["empty"], center)
     full_angle = angle_of(points["full"], center)
 
-    if direction == "tip_side":
+    if direction == "max_full_span":
+        used_direction = choose_max_full_span_direction(empty_angle, full_angle)
+        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
+    elif direction == "tip_side":
         used_direction = choose_tip_side_direction(tip_angle, empty_angle, full_angle)
         ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
     elif direction == "auto":

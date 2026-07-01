@@ -95,23 +95,23 @@ python call_entrance_pose/train_yolo_fuel_pose.py \
 python call_entrance_pose/predict_pose_fuel.py \
   --model runs/fuel_pose/pose_4kpt/weights/best.pt \
   --source /path/to/images \
-  --direction tip_side \
+  --direction max_full_span \
   --save-vis
 ```
 
 The dataset rule is:
 
 ```text
-direction = the side from the empty line toward the tip line
+direction = the larger angle direction from empty line to full line
 fuel_ratio = angle(empty -> tip, direction) / angle(empty -> full, direction)
 ```
 
-So `--direction tip_side` is the default. In code this chooses the direction where `tip` lies inside the `empty -> full` sweep, then reports both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` for debugging.
+So `--direction max_full_span` is the default. It compares the clockwise and counterclockwise `empty -> full` angles, chooses the larger one, then reports both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` for debugging.
 
-`--direction auto` chooses the shorter arc from `empty` to `full`. Use it only for quick experiments with old annotations:
+`--direction tip_side` chooses the direction where `tip` lies inside the `empty -> full` sweep. Use it only for comparison with old experiments:
 
 ```bash
---direction auto
+--direction tip_side
 ```
 
 For fixed-direction gauges, use:
