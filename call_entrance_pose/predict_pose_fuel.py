@@ -75,19 +75,38 @@ def angle_in_direction(start: float, target: float, direction: str) -> float:
         raise ValueError(f"Unsupported direction: {direction}")
 
 
-def choose_effective_direction(empty_angle: float, full_angle: float) -> Tuple[str, float]:
-    """Choose the direction with the larger empty-to-full angle.
+def choose_effective_direction(empty_angle: float, full_angle: float, tip_angle: float) -> Tuple[str, float]:
+    """Choose the direction where tip lies between empty and full.
+
+    Business rule: Choose the direction where empty->tip angle < empty->full angle,
+    so that the tip is within the valid range [empty, full].
+
+    If both directions satisfy this (unlikely), choose the one with larger full span.
+    If neither satisfies, fall back to the direction with larger full span.
 
     Returns:
         (direction, max_angle): The effective direction and its corresponding angle.
     """
     cw_full = clockwise_angle(empty_angle, full_angle)
     ccw_full = counterclockwise_angle(empty_angle, full_angle)
+    cw_tip = clockwise_angle(empty_angle, tip_angle)
+    ccw_tip = counterclockwise_angle(empty_angle, tip_angle)
 
-    if cw_full >= ccw_full:
+    # Check which directions have tip within [empty, full]
+    cw_valid = (cw_full > 1e-6) and (0 <= cw_tip <= cw_full)
+    ccw_valid = (ccw_full > 1e-6) and (0 <= ccw_tip <= ccw_full)
+
+    if cw_valid and ccw_valid:
+        # Both valid: choose the one with larger full span
+        return ("clockwise", cw_full) if cw_full >= ccw_full else ("counterclockwise", ccw_full)
+    elif cw_valid:
         return "clockwise", cw_full
-    else:
+    elif ccw_valid:
         return "counterclockwise", ccw_full
+    else:
+        # Neither valid (tip is outside [empty, full] in both directions)
+        # Fall back to the direction with larger full span
+        return ("clockwise", cw_full) if cw_full >= ccw_full else ("counterclockwise", ccw_full)
 
 
 def choose_tip_side_direction(tip: float, empty: float, full: float) -> str:
@@ -118,10 +137,10 @@ def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = 
     """Compute fuel ratio from keypoints.
 
     Business rules:
-    1. Calculate empty->full angles in both directions (clockwise and counterclockwise)
-    2. The LARGER angle is max_angle, and its direction is effective_direction
-    3. Calculate empty->tip angle along effective_direction as tip_angle
-    4. fuel_ratio = tip_angle / max_angle
+    1. Calculate empty->full and empty->tip angles in both directions
+    2. Choose the direction where tip is between empty and full (ratio in [0, 1])
+    3. If both directions are valid, choose the one with larger full span
+    4. Calculate fuel_ratio = (empty->tip angle) / (empty->full angle)
     5. Clamp fuel_ratio to [0, 1], but keep raw_fuel_ratio for debugging
     """
     center = points["center"]
@@ -131,15 +150,15 @@ def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = 
 
     # Determine effective direction based on mode
     if direction == "max_full_span":
-        # Use the direction with larger empty->full angle
-        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle)
+        # Use the direction where tip is between empty and full
+        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle, tip_angle)
     elif direction == "tip_side":
         # Use the direction where tip lies between empty and full
         used_direction = choose_tip_side_direction(tip_angle, empty_angle, full_angle)
         max_angle = angle_in_direction(empty_angle, full_angle, used_direction)
     elif direction == "auto":
-        # Choose direction with larger empty->full span (same as max_full_span)
-        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle)
+        # Choose direction where tip is between empty and full (same as max_full_span)
+        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle, tip_angle)
     elif direction in ("clockwise", "counterclockwise"):
         # Use the specified fixed direction
         used_direction = direction

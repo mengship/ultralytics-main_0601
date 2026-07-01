@@ -102,14 +102,15 @@ python call_entrance_pose/predict_pose_fuel.py \
 The angle calculation rule is:
 
 ```text
-1. Calculate empty->full angle in both clockwise and counterclockwise directions
-2. The LARGER angle is max_angle, and its direction is the effective direction
-3. Calculate empty->tip angle along the effective direction
-4. fuel_ratio = (empty->tip angle) / max_angle
-5. Clamp to [0, 1], but also report raw_fuel_ratio for debugging
+1. Calculate empty->full and empty->tip angles in both directions (clockwise and counterclockwise)
+2. Choose the direction where tip is between empty and full (i.e., empty->tip angle < empty->full angle)
+3. If both directions are valid, choose the one with larger full span
+4. If neither is valid, fall back to the direction with larger full span
+5. fuel_ratio = (empty->tip angle) / (empty->full angle)
+6. Clamp to [0, 1], but also report raw_fuel_ratio for debugging
 ```
 
-So `--direction max_full_span` is the default. It compares the clockwise and counterclockwise `empty -> full` angles, chooses the larger one as the maximum span, then calculates the tip progress along that direction. Both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` are reported for debugging.
+So `--direction max_full_span` is the default. It ensures the tip is within the valid range [empty, full] by choosing the direction where the pointer angle is less than the full span angle. Both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` are reported for debugging.
 
 `--direction tip_side` chooses the direction where `tip` lies inside the `empty -> full` sweep. Use it only for comparison with old experiments:
 
