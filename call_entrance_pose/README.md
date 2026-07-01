@@ -99,14 +99,17 @@ python call_entrance_pose/predict_pose_fuel.py \
   --save-vis
 ```
 
-The dataset rule is:
+The angle calculation rule is:
 
 ```text
-direction = the larger angle direction from empty line to full line
-fuel_ratio = angle(empty -> tip, direction) / angle(empty -> full, direction)
+1. Calculate empty->full angle in both clockwise and counterclockwise directions
+2. The LARGER angle is max_angle, and its direction is the effective direction
+3. Calculate empty->tip angle along the effective direction
+4. fuel_ratio = (empty->tip angle) / max_angle
+5. Clamp to [0, 1], but also report raw_fuel_ratio for debugging
 ```
 
-So `--direction max_full_span` is the default. It compares the clockwise and counterclockwise `empty -> full` angles, chooses the larger one, then reports both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` for debugging.
+So `--direction max_full_span` is the default. It compares the clockwise and counterclockwise `empty -> full` angles, chooses the larger one as the maximum span, then calculates the tip progress along that direction. Both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` are reported for debugging.
 
 `--direction tip_side` chooses the direction where `tip` lies inside the `empty -> full` sweep. Use it only for comparison with old experiments:
 

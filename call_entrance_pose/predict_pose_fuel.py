@@ -50,25 +50,44 @@ def angle_of(point: Tuple[float, float], center: Tuple[float, float]) -> float:
 
 
 def wrap_positive(angle: float) -> float:
+    """Normalize angle to [0, 2π)."""
     value = angle % TAU
     return value + TAU if value < 0 else value
 
 
-def progress_for_direction(tip: float, empty: float, full: float, direction: str) -> Tuple[float, float, float, float, bool]:
+def clockwise_angle(start: float, end: float) -> float:
+    """Calculate angle from start to end in clockwise direction."""
+    return wrap_positive(end - start)
+
+
+def counterclockwise_angle(start: float, end: float) -> float:
+    """Calculate angle from start to end in counterclockwise direction."""
+    return wrap_positive(start - end)
+
+
+def angle_in_direction(start: float, target: float, direction: str) -> float:
+    """Calculate angle from start to target along the specified direction."""
     if direction == "clockwise":
-        span = wrap_positive(full - empty)
-        offset = wrap_positive(tip - empty)
+        return clockwise_angle(start, target)
     elif direction == "counterclockwise":
-        span = wrap_positive(empty - full)
-        offset = wrap_positive(empty - tip)
+        return counterclockwise_angle(start, target)
     else:
         raise ValueError(f"Unsupported direction: {direction}")
 
-    if span < 1e-6:
-        return 0.0, span, offset, 0.0, False
-    raw_ratio = offset / span
-    ratio = max(0.0, min(1.0, raw_ratio))
-    return ratio, span, offset, raw_ratio, ratio != raw_ratio
+
+def choose_effective_direction(empty_angle: float, full_angle: float) -> Tuple[str, float]:
+    """Choose the direction with the larger empty-to-full angle.
+
+    Returns:
+        (direction, max_angle): The effective direction and its corresponding angle.
+    """
+    cw_full = clockwise_angle(empty_angle, full_angle)
+    ccw_full = counterclockwise_angle(empty_angle, full_angle)
+
+    if cw_full >= ccw_full:
+        return "clockwise", cw_full
+    else:
+        return "counterclockwise", ccw_full
 
 
 def choose_tip_side_direction(tip: float, empty: float, full: float) -> str:
@@ -78,63 +97,76 @@ def choose_tip_side_direction(tip: float, empty: float, full: float) -> str:
     """
     candidates = []
     for candidate in ("clockwise", "counterclockwise"):
-        _, span, offset, raw_ratio, _ = progress_for_direction(tip, empty, full, candidate)
-        if span > 1e-6 and 0.0 <= raw_ratio <= 1.0:
-            candidates.append((candidate, span, offset))
+        span = angle_in_direction(empty, full, candidate)
+        offset = angle_in_direction(empty, tip, candidate)
+        if span > 1e-6:
+            raw_ratio = offset / span
+            if 0.0 <= raw_ratio <= 1.0:
+                candidates.append((candidate, span, offset))
 
     if candidates:
         # Usually only one direction is physically valid. If both are valid because
         # tip is exactly at full, keep the direction with the shorter tip arc.
         return min(candidates, key=lambda item: item[2])[0]
 
-    clockwise_offset = wrap_positive(tip - empty)
-    counterclockwise_offset = wrap_positive(empty - tip)
+    clockwise_offset = clockwise_angle(empty, tip)
+    counterclockwise_offset = counterclockwise_angle(empty, tip)
     return "clockwise" if clockwise_offset <= counterclockwise_offset else "counterclockwise"
 
 
-def choose_max_full_span_direction(empty: float, full: float) -> str:
-    """Choose the direction with the larger empty-to-full angle."""
-    clockwise_span = wrap_positive(full - empty)
-    counterclockwise_span = wrap_positive(empty - full)
-    return "clockwise" if clockwise_span >= counterclockwise_span else "counterclockwise"
-
-
 def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = "max_full_span") -> Dict[str, float | str | bool]:
+    """Compute fuel ratio from keypoints.
+
+    Business rules:
+    1. Calculate empty->full angles in both directions (clockwise and counterclockwise)
+    2. The LARGER angle is max_angle, and its direction is effective_direction
+    3. Calculate empty->tip angle along effective_direction as tip_angle
+    4. fuel_ratio = tip_angle / max_angle
+    5. Clamp fuel_ratio to [0, 1], but keep raw_fuel_ratio for debugging
+    """
     center = points["center"]
     tip_angle = angle_of(points["tip"], center)
     empty_angle = angle_of(points["empty"], center)
     full_angle = angle_of(points["full"], center)
 
+    # Determine effective direction based on mode
     if direction == "max_full_span":
-        used_direction = choose_max_full_span_direction(empty_angle, full_angle)
-        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
+        # Use the direction with larger empty->full angle
+        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle)
     elif direction == "tip_side":
+        # Use the direction where tip lies between empty and full
         used_direction = choose_tip_side_direction(tip_angle, empty_angle, full_angle)
-        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
+        max_angle = angle_in_direction(empty_angle, full_angle, used_direction)
     elif direction == "auto":
-        cw_ratio, cw_span, cw_offset, cw_raw_ratio, cw_clamped = progress_for_direction(
-            tip_angle, empty_angle, full_angle, "clockwise"
-        )
-        ccw_ratio, ccw_span, ccw_offset, ccw_raw_ratio, ccw_clamped = progress_for_direction(
-            tip_angle, empty_angle, full_angle, "counterclockwise"
-        )
-        if cw_span <= ccw_span:
-            used_direction = "clockwise"
-            ratio, span, offset, raw_ratio, clamped = cw_ratio, cw_span, cw_offset, cw_raw_ratio, cw_clamped
-        else:
-            used_direction = "counterclockwise"
-            ratio, span, offset, raw_ratio, clamped = ccw_ratio, ccw_span, ccw_offset, ccw_raw_ratio, ccw_clamped
-    else:
+        # Choose direction with larger empty->full span (same as max_full_span)
+        used_direction, max_angle = choose_effective_direction(empty_angle, full_angle)
+    elif direction in ("clockwise", "counterclockwise"):
+        # Use the specified fixed direction
         used_direction = direction
-        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, direction)
+        max_angle = angle_in_direction(empty_angle, full_angle, used_direction)
+    else:
+        raise ValueError(f"Unsupported direction: {direction}")
+
+    # Calculate tip progress along the effective direction
+    if max_angle < 1e-6:
+        # Degenerate case: empty and full are at the same angle
+        fuel_ratio = 0.0
+        raw_fuel_ratio = 0.0
+        tip_angle_progress = 0.0
+        clamped = False
+    else:
+        tip_angle_progress = angle_in_direction(empty_angle, tip_angle, used_direction)
+        raw_fuel_ratio = tip_angle_progress / max_angle
+        fuel_ratio = max(0.0, min(1.0, raw_fuel_ratio))
+        clamped = (fuel_ratio != raw_fuel_ratio)
 
     return {
-        "fuel_ratio": ratio,
-        "raw_fuel_ratio": raw_ratio,
+        "fuel_ratio": fuel_ratio,
+        "raw_fuel_ratio": raw_fuel_ratio,
         "clamped": clamped,
         "direction": used_direction,
-        "span_deg": math.degrees(span),
-        "offset_deg": math.degrees(offset),
+        "span_deg": math.degrees(max_angle),
+        "offset_deg": math.degrees(tip_angle_progress),
         "tip_deg": math.degrees(tip_angle),
         "empty_deg": math.degrees(empty_angle),
         "full_deg": math.degrees(full_angle),
