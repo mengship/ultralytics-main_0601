@@ -1,0 +1,108 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "oil",
+      "score": null,
+      "points": [
+        [
+          838.8155339805826,
+          406.6601941747573
+        ],
+        [
+          1017.4563106796115,
+          406.6601941747573
+        ],
+        [
+          1017.4563106796115,
+          522.1941747572815
+        ],
+        [
+          838.8155339805826,
+          522.1941747572815
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "center",
+      "score": null,
+      "points": [
+        [
+          931.0485436893204,
+          495.0097087378641
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          1009.6893203883495,
+          473.65048543689323
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          853.3786407766991,
+          467.82524271844665
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          1010.6601941747573,
+          475.59223300970876
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "260626_CCC7152.jpg",
+  "imageData": null,
+  "imageHeight": 1224,
+  "imageWidth": 1632,
+  "description": ""
+}

@@ -1,0 +1,41 @@
+{
+  "keypoint_order": [
+    "center",
+    "tip",
+    "empty",
+    "full"
+  ],
+  "samples": [
+    {
+      "split": "train",
+      "image": "260626_CCC7152.jpg",
+      "json": "260626_CCC7152.json",
+      "objects": [
+        {
+          "box_index": 0,
+          "group_id": null,
+          "match_mode": "inside_box",
+          "fuel_ratio": null,
+          "keypoints": {
+            "center": [
+              931.0485436893204,
+              495.0097087378641
+            ],
+            "tip": [
+              1009.6893203883495,
+              473.65048543689323
+            ],
+            "empty": [
+              853.3786407766991,
+              467.82524271844665
+            ],
+            "full": [
+              1010.6601941747573,
+              475.59223300970876
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
