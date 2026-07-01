@@ -54,7 +54,7 @@ def wrap_positive(angle: float) -> float:
     return value + TAU if value < 0 else value
 
 
-def progress_for_direction(tip: float, empty: float, full: float, direction: str) -> Tuple[float, float, float]:
+def progress_for_direction(tip: float, empty: float, full: float, direction: str) -> Tuple[float, float, float, float, bool]:
     if direction == "clockwise":
         span = wrap_positive(full - empty)
         offset = wrap_positive(tip - empty)
@@ -65,45 +65,63 @@ def progress_for_direction(tip: float, empty: float, full: float, direction: str
         raise ValueError(f"Unsupported direction: {direction}")
 
     if span < 1e-6:
-        return 0.0, span, offset
-    ratio = offset / span
-    return max(0.0, min(1.0, ratio)), span, offset
+        return 0.0, span, offset, 0.0, False
+    raw_ratio = offset / span
+    ratio = max(0.0, min(1.0, raw_ratio))
+    return ratio, span, offset, raw_ratio, ratio != raw_ratio
 
 
-def choose_tip_side_direction(tip: float, empty: float) -> str:
-    """Choose the side from the empty line toward the tip line.
+def choose_tip_side_direction(tip: float, empty: float, full: float) -> str:
+    """Choose the side where the tip lies between empty and full.
 
     With image coordinates and atan2(y, x), increasing angle is clockwise.
     """
+    candidates = []
+    for candidate in ("clockwise", "counterclockwise"):
+        _, span, offset, raw_ratio, _ = progress_for_direction(tip, empty, full, candidate)
+        if span > 1e-6 and 0.0 <= raw_ratio <= 1.0:
+            candidates.append((candidate, span, offset))
+
+    if candidates:
+        # Usually only one direction is physically valid. If both are valid because
+        # tip is exactly at full, keep the direction with the shorter tip arc.
+        return min(candidates, key=lambda item: item[2])[0]
+
     clockwise_offset = wrap_positive(tip - empty)
     counterclockwise_offset = wrap_positive(empty - tip)
     return "clockwise" if clockwise_offset <= counterclockwise_offset else "counterclockwise"
 
 
-def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = "tip_side") -> Dict[str, float | str]:
+def compute_fuel_ratio(points: Dict[str, Tuple[float, float]], direction: str = "tip_side") -> Dict[str, float | str | bool]:
     center = points["center"]
     tip_angle = angle_of(points["tip"], center)
     empty_angle = angle_of(points["empty"], center)
     full_angle = angle_of(points["full"], center)
 
     if direction == "tip_side":
-        used_direction = choose_tip_side_direction(tip_angle, empty_angle)
-        ratio, span, offset = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
+        used_direction = choose_tip_side_direction(tip_angle, empty_angle, full_angle)
+        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, used_direction)
     elif direction == "auto":
-        cw_ratio, cw_span, cw_offset = progress_for_direction(tip_angle, empty_angle, full_angle, "clockwise")
-        ccw_ratio, ccw_span, ccw_offset = progress_for_direction(tip_angle, empty_angle, full_angle, "counterclockwise")
+        cw_ratio, cw_span, cw_offset, cw_raw_ratio, cw_clamped = progress_for_direction(
+            tip_angle, empty_angle, full_angle, "clockwise"
+        )
+        ccw_ratio, ccw_span, ccw_offset, ccw_raw_ratio, ccw_clamped = progress_for_direction(
+            tip_angle, empty_angle, full_angle, "counterclockwise"
+        )
         if cw_span <= ccw_span:
             used_direction = "clockwise"
-            ratio, span, offset = cw_ratio, cw_span, cw_offset
+            ratio, span, offset, raw_ratio, clamped = cw_ratio, cw_span, cw_offset, cw_raw_ratio, cw_clamped
         else:
             used_direction = "counterclockwise"
-            ratio, span, offset = ccw_ratio, ccw_span, ccw_offset
+            ratio, span, offset, raw_ratio, clamped = ccw_ratio, ccw_span, ccw_offset, ccw_raw_ratio, ccw_clamped
     else:
         used_direction = direction
-        ratio, span, offset = progress_for_direction(tip_angle, empty_angle, full_angle, direction)
+        ratio, span, offset, raw_ratio, clamped = progress_for_direction(tip_angle, empty_angle, full_angle, direction)
 
     return {
         "fuel_ratio": ratio,
+        "raw_fuel_ratio": raw_ratio,
+        "clamped": clamped,
         "direction": used_direction,
         "span_deg": math.degrees(span),
         "offset_deg": math.degrees(offset),
@@ -136,7 +154,12 @@ def extract_points(result, index: int) -> Dict[str, Tuple[float, float]]:
     }
 
 
-def draw_prediction(image_path: str, points: Dict[str, Tuple[float, float]], ratio: float, output_path: Path) -> None:
+def draw_prediction(
+    image_path: str,
+    points: Dict[str, Tuple[float, float]],
+    metrics: Dict[str, float | str | bool],
+    output_path: Path,
+) -> None:
     image = cv2.imread(image_path)
     if image is None:
         return
@@ -158,15 +181,11 @@ def draw_prediction(image_path: str, points: Dict[str, Tuple[float, float]], rat
         xy = tuple(int(v) for v in points[name])
         cv2.line(image, center, xy, colors[name], 2)
 
-    cv2.putText(
-        image,
-        f"fuel={ratio * 100:.1f}%",
-        (20, 40),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (0, 255, 255),
-        2,
-    )
+    ratio = float(metrics["fuel_ratio"])
+    raw_ratio = float(metrics["raw_fuel_ratio"])
+    direction = str(metrics["direction"])
+    label = f"fuel={ratio * 100:.1f}% raw={raw_ratio * 100:.1f}% {direction}"
+    cv2.putText(image, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 255, 255), 2)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), image)
@@ -179,7 +198,9 @@ def write_csv(rows: Iterable[dict], output_csv: Path) -> None:
         "status",
         "confidence",
         "fuel_ratio",
+        "raw_fuel_ratio",
         "fuel_percent",
+        "clamped",
         "direction",
         "span_deg",
         "offset_deg",
@@ -226,7 +247,9 @@ def main() -> None:
             "status": "no_detection",
             "confidence": "",
             "fuel_ratio": "",
+            "raw_fuel_ratio": "",
             "fuel_percent": "",
+            "clamped": "",
             "direction": "",
             "span_deg": "",
             "offset_deg": "",
@@ -259,7 +282,9 @@ def main() -> None:
                     "status": "ok",
                     "confidence": f"{confidence:.6f}",
                     "fuel_ratio": f"{ratio:.6f}",
+                    "raw_fuel_ratio": f"{float(metrics['raw_fuel_ratio']):.6f}",
                     "fuel_percent": f"{ratio * 100:.2f}",
+                    "clamped": str(bool(metrics["clamped"])),
                     "direction": metrics["direction"],
                     "span_deg": f"{float(metrics['span_deg']):.3f}",
                     "offset_deg": f"{float(metrics['offset_deg']):.3f}",
@@ -279,7 +304,7 @@ def main() -> None:
 
             if args.save_vis:
                 image_name = Path(result.path).stem
-                draw_prediction(result.path, points, ratio, vis_dir / f"{image_name}_pose.jpg")
+                draw_prediction(result.path, points, metrics, vis_dir / f"{image_name}_pose.jpg")
         except Exception as exc:
             row["status"] = f"error: {exc}"
 

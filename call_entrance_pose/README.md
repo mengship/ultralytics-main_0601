@@ -106,7 +106,7 @@ direction = the side from the empty line toward the tip line
 fuel_ratio = angle(empty -> tip, direction) / angle(empty -> full, direction)
 ```
 
-So `--direction tip_side` is the default.
+So `--direction tip_side` is the default. In code this chooses the direction where `tip` lies inside the `empty -> full` sweep, then reports both the clamped `fuel_ratio` and the raw `raw_fuel_ratio` for debugging.
 
 `--direction auto` chooses the shorter arc from `empty` to `full`. Use it only for quick experiments with old annotations:
 
