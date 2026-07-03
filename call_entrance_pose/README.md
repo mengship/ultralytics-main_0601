@@ -78,6 +78,9 @@ you can prefix every image/JSON filename with its type directory name. This is o
 python call_entrance_pose/prefix_type_filenames.py \
   --root "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702"
 
+python call_entrance_pose/prefix_type_filenames.py \
+  --root "/home/wang/datasets/yolopose_dataset"
+
 # Apply rename and update JSON imagePath
 python call_entrance_pose/prefix_type_filenames.py \
   --root "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702" \
@@ -125,6 +128,11 @@ python call_entrance_pose/convert_labelme_pose_dataset.py \
   --json-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702" \
   --output-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert" \
   --val-ratio 0.2
+
+python call_entrance_pose/convert_labelme_pose_dataset.py \
+  --json-dir "/home/wang/datasets/yolopose_dataset" \
+  --output-dir "/home/wang/datasets/yolopose_dataset_convert" \
+  --val-ratio 0.2
 ```
 
 The converter also accepts multiple source directories:
@@ -171,6 +179,10 @@ Then run:
 python call_entrance_pose/train_yolo_fuel_pose.py \
   --data fuel_pose_dataset/data.yaml \
   --model yolo11m-pose.pt
+
+python call_entrance_pose/train_yolo_fuel_pose.py \
+  --data /home/wang/datasets/yolopose_dataset_convert/data.yaml \
+  --model yolo11m-pose.pt
 ```
 
 ## Predict Fuel Ratio
@@ -181,6 +193,14 @@ python call_entrance_pose/predict_pose_fuel.py \
   --source /path/to/images \
   --direction max_full_span \
   --save-vis
+
+python call_entrance_pose/predict_pose_fuel.py \
+  --model /home/wang/ultralytics-main_0601/runs/pose/runs/fuel_pose/pose_4kpt-3/weights/best.pt \
+  --source "/home/wang/datasets/data_relabel" \
+  --direction max_full_span \
+  --output-csv /home/wang/datasets/data_relabel_result/predict_result.csv \
+  --save-vis \
+  --vis-dir /home/wang/datasets/data_relabel_result/predict_vis
 ```
 
 The angle calculation rule is:
