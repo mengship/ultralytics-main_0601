@@ -215,6 +215,84 @@ def extract_points(result, index: int) -> Dict[str, Tuple[float, float]]:
     }
 
 
+def put_label_with_outline(
+    image: np.ndarray,
+    text: str,
+    xy: Tuple[int, int],
+    color: Tuple[int, int, int],
+    scale: float = 0.55,
+) -> None:
+    """Draw readable text on noisy dashboard images."""
+    cv2.putText(image, text, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 3, cv2.LINE_AA)
+    cv2.putText(image, text, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, color, 1, cv2.LINE_AA)
+
+
+def draw_clockwise_arc(
+    image: np.ndarray,
+    center: Tuple[int, int],
+    radius: int,
+    start_deg: float,
+    sweep_deg: float,
+    color: Tuple[int, int, int],
+    thickness: int = 2,
+) -> None:
+    """Draw a clockwise-positive arc in image coordinates."""
+    remaining = max(0.0, min(360.0, sweep_deg))
+    current = start_deg % 360.0
+
+    while remaining > 1e-3:
+        step = min(remaining, 360.0 - current)
+        if step <= 1e-3:
+            current = 0.0
+            continue
+
+        cv2.ellipse(
+            image,
+            center,
+            (radius, radius),
+            0,
+            current,
+            current + step,
+            color,
+            thickness,
+            lineType=cv2.LINE_AA,
+        )
+        remaining -= step
+        current = 0.0
+
+
+def draw_angle_annotation(
+    image: np.ndarray,
+    center: Tuple[int, int],
+    start_angle: float,
+    target_angle: float,
+    direction: str,
+    radius: int,
+    color: Tuple[int, int, int],
+    label: str,
+    label_offset: Tuple[int, int] = (0, 0),
+) -> None:
+    """Draw and label one angle arc from empty to tip/full."""
+    sweep = angle_in_direction(start_angle, target_angle, direction)
+    if sweep <= 1e-6:
+        return
+
+    if direction == "clockwise":
+        cv_start_deg = math.degrees(wrap_positive(start_angle))
+        mid_angle = start_angle + sweep / 2.0
+    else:
+        # Draw the same geometric arc clockwise from target back to start.
+        cv_start_deg = math.degrees(wrap_positive(target_angle))
+        mid_angle = start_angle - sweep / 2.0
+
+    draw_clockwise_arc(image, center, radius, cv_start_deg, math.degrees(sweep), color, thickness=2)
+
+    text_radius = radius + 14
+    text_x = int(center[0] + math.cos(mid_angle) * text_radius + label_offset[0])
+    text_y = int(center[1] + math.sin(mid_angle) * text_radius + label_offset[1])
+    put_label_with_outline(image, label, (text_x, text_y), color, scale=0.48)
+
+
 def draw_prediction(
     image_path: str,
     points: Dict[str, Tuple[float, float]],
@@ -245,8 +323,43 @@ def draw_prediction(
     ratio = float(metrics["fuel_ratio"])
     raw_ratio = float(metrics["raw_fuel_ratio"])
     direction = str(metrics["direction"])
+    center_float = points["center"]
+    empty_angle = angle_of(points["empty"], center_float)
+    tip_angle = angle_of(points["tip"], center_float)
+    full_angle = angle_of(points["full"], center_float)
+    distances = [
+        math.hypot(points[name][0] - center_float[0], points[name][1] - center_float[1])
+        for name in ("tip", "empty", "full")
+    ]
+    max_distance = max([d for d in distances if d > 1.0] or [40.0])
+    tip_arc_radius = max(18, int(max_distance * 0.38))
+    full_arc_radius = max(tip_arc_radius + 12, int(max_distance * 0.58))
+
+    draw_angle_annotation(
+        image,
+        center,
+        empty_angle,
+        tip_angle,
+        direction,
+        tip_arc_radius,
+        (0, 255, 255),
+        f"empty->tip {float(metrics['offset_deg']):.1f}deg",
+        label_offset=(-8, 14),
+    )
+    draw_angle_annotation(
+        image,
+        center,
+        empty_angle,
+        full_angle,
+        direction,
+        full_arc_radius,
+        (255, 255, 0),
+        f"empty->full {float(metrics['span_deg']):.1f}deg",
+        label_offset=(8, -10),
+    )
+
     label = f"fuel={ratio * 100:.1f}% raw={raw_ratio * 100:.1f}% {direction}"
-    cv2.putText(image, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 255, 255), 2)
+    put_label_with_outline(image, label, (20, 40), (0, 255, 255), scale=0.85)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), image)
