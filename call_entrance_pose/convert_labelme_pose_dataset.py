@@ -20,7 +20,7 @@ import random
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import yaml
 
@@ -64,7 +64,15 @@ class PointShape:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert pointer gauge pose annotations to YOLO Pose format.")
-    parser.add_argument("--json-dir", required=True, help="Directory containing JSON files and images.")
+    parser.add_argument(
+        "--json-dir",
+        nargs="+",
+        required=True,
+        help=(
+            "Directory/directories containing JSON files and images. If a directory has no JSON files directly, "
+            "its immediate child directories that contain JSON files are treated as separate type groups."
+        ),
+    )
     parser.add_argument("--output-dir", default="fuel_pose_dataset", help="Output YOLO Pose dataset directory.")
     parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for train/val split.")
@@ -76,6 +84,41 @@ def parse_args() -> argparse.Namespace:
         help="If no rectangle exists, create a box from the four keypoints with this relative padding.",
     )
     return parser.parse_args()
+
+
+def group_name_from_dir(directory: Path) -> str:
+    return directory.name.strip().lower().replace(" ", "_").replace("-", "_") or "root"
+
+
+def discover_source_dirs(paths: List[str]) -> List[Tuple[Path, str]]:
+    """Find JSON source directories and assign each one a split group name."""
+    source_dirs: List[Tuple[Path, str]] = []
+    seen: Set[Path] = set()
+
+    for raw_path in paths:
+        root = Path(raw_path).expanduser().resolve()
+        if not root.exists():
+            raise FileNotFoundError(f"JSON directory does not exist: {root}")
+        if not root.is_dir():
+            raise NotADirectoryError(f"JSON path is not a directory: {root}")
+
+        direct_jsons = list(root.glob("*.json"))
+        if direct_jsons and root not in seen:
+            source_dirs.append((root, group_name_from_dir(root)))
+            seen.add(root)
+
+        child_dirs = [p for p in sorted(root.iterdir()) if p.is_dir() and list(p.glob("*.json"))]
+        for child_dir in child_dirs:
+            if child_dir in seen:
+                continue
+            source_dirs.append((child_dir, group_name_from_dir(child_dir)))
+            seen.add(child_dir)
+
+    if not source_dirs:
+        roots = ", ".join(str(Path(p).expanduser().resolve()) for p in paths)
+        raise FileNotFoundError(f"No JSON files found in source directories: {roots}")
+
+    return source_dirs
 
 
 def norm_label(label: object) -> str:
@@ -263,6 +306,7 @@ def yolo_point(point: PointShape, width: int, height: int) -> Tuple[float, float
 def convert_json(
     json_file: Path,
     json_dir: Path,
+    source_group: str,
     image_exts: List[str],
     auto_box_padding: float,
 ) -> Tuple[Optional[dict], List[dict]]:
@@ -359,6 +403,8 @@ def convert_json(
         "lines": lines,
         "objects": objects,
         "source_json": json_file.name,
+        "source_dir": str(json_dir),
+        "source_group": source_group,
     }, missing
 
 
@@ -377,11 +423,8 @@ def write_yaml(output_dir: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    json_dir = Path(args.json_dir).expanduser().resolve()
     output_dir = Path(args.output_dir).expanduser().resolve()
-
-    if not json_dir.exists():
-        raise FileNotFoundError(f"JSON directory does not exist: {json_dir}")
+    source_dirs = discover_source_dirs(args.json_dir)
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -390,38 +433,82 @@ def main() -> None:
         (output_dir / split / "images").mkdir(parents=True, exist_ok=True)
         (output_dir / split / "labels").mkdir(parents=True, exist_ok=True)
 
-    json_files = sorted(json_dir.glob("*.json"))
     converted: List[dict] = []
     missing_report: List[dict] = []
+    json_file_count = 0
+    source_stats: Dict[str, dict] = {}
 
-    for json_file in json_files:
-        item, missing = convert_json(json_file, json_dir, args.image_exts, args.auto_box_padding)
-        missing_report.extend(missing)
-        if item is not None:
-            converted.append(item)
+    for source_dir, source_group in source_dirs:
+        json_files = sorted(source_dir.glob("*.json"))
+        json_file_count += len(json_files)
+        source_stats[source_group] = {
+            "source_dir": str(source_dir),
+            "json_files": len(json_files),
+            "usable": 0,
+            "missing": 0,
+            "train": 0,
+            "val": 0,
+            "train_objects": 0,
+            "val_objects": 0,
+        }
 
-    random.seed(args.seed)
-    random.shuffle(converted)
-    val_count = int(round(len(converted) * args.val_ratio))
-    if len(converted) > 1 and val_count == 0 and args.val_ratio > 0:
-        val_count = 1
-    val_items = set(item["source_json"] for item in converted[:val_count])
+        for json_file in json_files:
+            item, missing = convert_json(json_file, source_dir, source_group, args.image_exts, args.auto_box_padding)
+            for missing_item in missing:
+                missing_item["source_group"] = source_group
+                missing_item["source_dir"] = str(source_dir)
+            missing_report.extend(missing)
+            source_stats[source_group]["missing"] += len(missing)
+            if item is not None:
+                converted.append(item)
+                source_stats[source_group]["usable"] += 1
+
+    grouped_items: Dict[str, List[dict]] = {}
+    for item in converted:
+        grouped_items.setdefault(item["source_group"], []).append(item)
+
+    split_assignment: Dict[Tuple[str, str], str] = {}
+    rng = random.Random(args.seed)
+    for source_group, items in sorted(grouped_items.items()):
+        rng.shuffle(items)
+        val_count = int(round(len(items) * args.val_ratio))
+        if len(items) > 1 and val_count == 0 and args.val_ratio > 0:
+            val_count = 1
+        if len(items) > 1 and val_count >= len(items):
+            val_count = len(items) - 1
+
+        for index, item in enumerate(items):
+            split_assignment[(item["source_group"], item["source_json"])] = "val" if index < val_count else "train"
 
     metadata = {
         "keypoint_order": KEYPOINT_ORDER,
+        "source_dirs": [
+            {"group": source_group, "path": str(source_dir)}
+            for source_dir, source_group in source_dirs
+        ],
         "samples": [],
     }
 
     split_counts = {"train": 0, "val": 0}
     object_counts = {"train": 0, "val": 0}
+    used_output_names: Set[str] = set()
 
     for item in converted:
-        split = "val" if item["source_json"] in val_items else "train"
+        split = split_assignment[(item["source_group"], item["source_json"])]
         split_counts[split] += 1
         object_counts[split] += len(item["lines"])
+        source_stats[item["source_group"]][split] += 1
+        source_stats[item["source_group"]][f"{split}_objects"] += len(item["lines"])
 
-        image_dst = output_dir / split / "images" / item["image_name"]
-        label_dst = output_dir / split / "labels" / f"{item['stem']}.txt"
+        output_image_name = item["image_name"]
+        output_stem = item["stem"]
+        if output_image_name in used_output_names:
+            output_image_name = f"{item['source_group']}_{item['image_name']}"
+            output_stem = Path(output_image_name).stem
+        used_output_names.add(output_image_name)
+
+        image_dst = output_dir / split / "images" / output_image_name
+        label_dst = output_dir / split / "labels" / f"{output_stem}.txt"
         shutil.copy2(item["image_file"], image_dst)
         with open(label_dst, "w", encoding="utf-8") as f:
             f.write("\n".join(item["lines"]) + "\n")
@@ -429,7 +516,10 @@ def main() -> None:
         metadata["samples"].append(
             {
                 "split": split,
-                "image": item["image_name"],
+                "source_group": item["source_group"],
+                "source_dir": item["source_dir"],
+                "image": output_image_name,
+                "source_image": item["image_name"],
                 "json": item["source_json"],
                 "objects": item["objects"],
             }
@@ -443,12 +533,22 @@ def main() -> None:
         json.dump(missing_report, f, ensure_ascii=False, indent=2)
 
     print("Pose dataset conversion complete")
-    print(f"  source: {json_dir}")
+    print("  sources:")
+    for source_dir, source_group in source_dirs:
+        print(f"    - {source_group}: {source_dir}")
     print(f"  output: {output_dir}")
-    print(f"  json files: {len(json_files)}")
+    print(f"  json files: {json_file_count}")
     print(f"  usable images: {len(converted)}")
     print(f"  train images/objects: {split_counts['train']}/{object_counts['train']}")
     print(f"  val images/objects: {split_counts['val']}/{object_counts['val']}")
+    print("  per-source split:")
+    for source_group, stats in sorted(source_stats.items()):
+        print(
+            f"    - {source_group}: usable={stats['usable']} "
+            f"train={stats['train']}/{stats['train_objects']} "
+            f"val={stats['val']}/{stats['val_objects']} "
+            f"missing_records={stats['missing']}"
+        )
     print(f"  skipped or incomplete records: {len(missing_report)}")
     print(f"  yaml: {output_dir / 'data.yaml'}")
     print(f"  report: {output_dir / 'missing_pose_report.json'}")
@@ -457,4 +557,17 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# python call_entrance_pose/convert_labelme_pose_dataset.py --json-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset" --output-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert"
+# Usage examples:
+#
+# 1) Single JSON/image directory:
+# python call_entrance_pose/convert_labelme_pose_dataset.py \
+#   --json-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset" \
+#   --output-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert" \
+#   --val-ratio 0.2
+#
+# 2) Parent directory with type subdirectories:
+#    0702/left, 0702/lower left, 0702/lower right, 0702/top right
+# python call_entrance_pose/convert_labelme_pose_dataset.py \
+#   --json-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702" \
+#   --output-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert" \
+#   --val-ratio 0.2

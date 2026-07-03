@@ -59,13 +59,97 @@ Grid gauges are not handled by this pose version. Keep using the existing ResNet
 
 ## Convert Dataset
 
-From repository root:
+### Optional: Prefix Filenames With Type
+
+If the raw data is organized by gauge type, for example:
+
+```text
+0702/
+  left/
+  lower left/
+  lower right/
+  top right/
+```
+
+you can prefix every image/JSON filename with its type directory name. This is only for easier checking and later traceability; YOLO does not use filenames as labels.
+
+```bash
+# Dry run first
+python call_entrance_pose/prefix_type_filenames.py \
+  --root "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702"
+
+# Apply rename and update JSON imagePath
+python call_entrance_pose/prefix_type_filenames.py \
+  --root "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702" \
+  --apply
+```
+
+The prefixes are:
+
+```text
+left/        -> left_
+lower left/  -> lower_left_
+lower right/ -> lower_right_
+top right/   -> top_right_
+```
+
+The script also updates each JSON `imagePath` so the converter can still find the renamed image.
+
+### Single Directory
+
+From repository root, a plain JSON/image directory still works:
 
 ```bash
 python call_entrance_pose/convert_labelme_pose_dataset.py \
   --json-dir "/path/to/json_and_images" \
-  --output-dir fuel_pose_dataset
+  --output-dir fuel_pose_dataset \
+  --val-ratio 0.2
 ```
+
+### Type Subdirectories
+
+If the source directory contains type subdirectories:
+
+```text
+0702/
+  left/
+  lower left/
+  lower right/
+  top right/
+```
+
+pass the parent directory. The converter reads each immediate child directory that contains JSON files as one source group, then splits each group by the same ratio. This keeps all four types represented in both train and val.
+
+```bash
+python call_entrance_pose/convert_labelme_pose_dataset.py \
+  --json-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/0702" \
+  --output-dir "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert" \
+  --val-ratio 0.2
+```
+
+The converter also accepts multiple source directories:
+
+```bash
+python call_entrance_pose/convert_labelme_pose_dataset.py \
+  --json-dir "/path/to/left" "/path/to/lower left" "/path/to/lower right" "/path/to/top right" \
+  --output-dir fuel_pose_dataset \
+  --val-ratio 0.2
+```
+
+Conversion outputs:
+
+```text
+dataset_convert/
+  data.yaml
+  train/images/
+  train/labels/
+  val/images/
+  val/labels/
+  pose_metadata.json
+  missing_pose_report.json
+```
+
+`pose_metadata.json` records each sample's source group and split. `missing_pose_report.json` records incomplete samples.
 
 The converter skips samples that do not have all four keypoints and writes a report:
 
