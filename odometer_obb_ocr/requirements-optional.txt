@@ -1,0 +1,13 @@
+# Optional OCR engines for odometer_obb_ocr/predict_odometer.py.
+# Install only the engine(s) you plan to use via --ocr-engine.
+#
+# These are optional: importing predict_odometer.py or utils/ocr.py never
+# requires either package. Only calling recognize() with a given --ocr-engine
+# needs that engine installed.
+
+# PaddleOCR (default --ocr-engine paddle)
+paddlepaddle
+paddleocr
+
+# EasyOCR (--ocr-engine easy)
+easyocr
