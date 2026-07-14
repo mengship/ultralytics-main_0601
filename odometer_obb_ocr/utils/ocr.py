@@ -60,17 +60,40 @@ _EASY_SINGLETON = None
 def get_paddle_reader():
     """Lazily construct and cache a PaddleOCR reader instance.
 
-    PaddleOCR's constructor kwargs (e.g. ``use_angle_cls`` vs ``use_textline_orientation``,
-    charset-restriction options) vary across versions, so we try a couple of
-    known-good spellings and fall back to a bare ``PaddleOCR(lang="en")`` if
-    none of them are accepted. There is no reliable cross-version kwarg for
-    restricting recognition to a charset; that restriction is instead applied
-    as post-processing via ``extract_digits``.
+    PaddleOCR's constructor kwargs vary across versions (2.x used
+    ``use_angle_cls``; 3.x's PP-OCRv6 pipeline uses ``use_textline_orientation``
+    plus ``use_doc_orientation_classify``/``use_doc_unwarping`` for its extra
+    document-preprocessing models). We try a few known-good spellings and fall
+    back to a bare ``PaddleOCR(lang="en")`` if none are accepted.
+
+    Since our input crops are already perspective-rectified, the 3.x pipeline's
+    document-orientation-classify and document-unwarping (UVDoc) stages are
+    unnecessary and are disabled where supported. ``enable_mkldnn=False`` works
+    around a known PaddlePaddle/oneDNN crash
+    (``ConvertPirAttribute2RuntimeAttribute not support``) on some CPU builds.
+
+    There is no reliable cross-version kwarg for restricting recognition to a
+    charset; that restriction is instead applied as post-processing via
+    ``extract_digits``.
     """
     global _PADDLE_SINGLETON
     if _PADDLE_SINGLETON is None:
         paddle_ocr_cls = _require_paddleocr()
         for kwargs in (
+            {
+                "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
+                "use_textline_orientation": False,
+                "enable_mkldnn": False,
+                "lang": "en",
+            },
+            {
+                "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
+                "use_textline_orientation": False,
+                "lang": "en",
+            },
+            {"use_angle_cls": False, "enable_mkldnn": False, "lang": "en"},
             {"use_angle_cls": False, "lang": "en"},
             {"use_textline_orientation": False, "lang": "en"},
             {"lang": "en"},
