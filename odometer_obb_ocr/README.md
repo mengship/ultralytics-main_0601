@@ -71,8 +71,8 @@ odometer displays are small and elongated relative to the full dashboard photo.
 
 ```bash
 python odometer_obb_ocr/train_obb.py \
-  --data odometer_obb_ocr/datasets/odometer_obb/data.yaml \
-  --model yolo11n-obb.pt --epochs 100 --imgsz 1024
+  --data /home/wang//datasets/odometer_obb_ocr_obb/data.yaml \
+  --model yolo11n-obb.pt --epochs 300 --imgsz 1024
 ```
 
 Use `--model yolo11s-obb.pt` for the production run once the `yolo11n-obb.pt` baseline looks
@@ -107,7 +107,7 @@ horizontal crop, then OCR of the mileage digits.
 ```bash
 python odometer_obb_ocr/predict_odometer.py \
   --model odometer_obb_ocr/runs/obb/odometer/weights/best.pt \
-  --source "/path/to/dashboard_images" --ocr-engine paddle \
+  --source "/home/wang/datasets/odometer_obb_ocr_obb/val/images" --ocr-engine paddle \
   --save-crops --save-vis
 ```
 
@@ -133,10 +133,11 @@ passed.
 PaddleOCR (`--ocr-engine paddle`, the default) and EasyOCR (`--ocr-engine easy`) are optional
 dependencies — see `requirements-optional.txt`. Importing `predict_odometer.py` or `utils/ocr.py`
 never requires either package; only actually running OCR with a given engine does, and an
-actionable install message is raised if that engine isn't installed. PaddleOCR's charset-allowlist
-API (restricting recognition to `0123456789kmKM`) varies by installed version; `utils/ocr.py`
-applies the allowlist defensively where supported and otherwise falls back to full recognition plus
-digit extraction — verify this against your installed PaddleOCR version.
+actionable install message is raised if that engine isn't installed. PaddleOCR's constructor kwargs
+(e.g. `use_angle_cls` vs `use_textline_orientation`) vary by installed version, so `utils/ocr.py`
+tries a few known-good spellings and falls back to a bare `PaddleOCR(lang="en")`. There is no
+reliable cross-version PaddleOCR kwarg for restricting recognition to a charset, so `0123456789kmKM`
+restriction is applied as post-processing via `extract_digits` rather than at the engine level.
 
 ## Tests
 

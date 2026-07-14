@@ -58,16 +58,34 @@ _EASY_SINGLETON = None
 
 
 def get_paddle_reader():
-    """Lazily construct and cache a PaddleOCR reader instance."""
+    """Lazily construct and cache a PaddleOCR reader instance.
+
+    PaddleOCR's constructor kwargs (e.g. ``use_angle_cls`` vs ``use_textline_orientation``,
+    charset-restriction options) vary across versions, so we try a couple of
+    known-good spellings and fall back to a bare ``PaddleOCR(lang="en")`` if
+    none of them are accepted. There is no reliable cross-version kwarg for
+    restricting recognition to a charset; that restriction is instead applied
+    as post-processing via ``extract_digits``.
+    """
     global _PADDLE_SINGLETON
     if _PADDLE_SINGLETON is None:
         paddle_ocr_cls = _require_paddleocr()
-        try:
-            _PADDLE_SINGLETON = paddle_ocr_cls(
-                use_angle_cls=False, lang="en", rec_char_dict_path=None
+        for kwargs in (
+            {"use_angle_cls": False, "lang": "en"},
+            {"use_textline_orientation": False, "lang": "en"},
+            {"lang": "en"},
+        ):
+            try:
+                _PADDLE_SINGLETON = paddle_ocr_cls(**kwargs)
+                break
+            except Exception:  # noqa: BLE001 - constructor kwargs vary by version
+                continue
+        if _PADDLE_SINGLETON is None:
+            raise OcrEngineError(
+                "Could not construct a PaddleOCR reader with any known constructor "
+                "kwargs. Your installed PaddleOCR version may use a different API; "
+                "check `python -c \"from paddleocr import PaddleOCR; help(PaddleOCR)\"`."
             )
-        except TypeError:
-            _PADDLE_SINGLETON = paddle_ocr_cls(use_angle_cls=False, lang="en")
     return _PADDLE_SINGLETON
 
 
