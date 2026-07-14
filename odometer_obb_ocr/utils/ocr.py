@@ -121,22 +121,8 @@ def get_easy_reader():
     return _EASY_SINGLETON
 
 
-def run_paddle_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
-    """Run a PaddleOCR reader over a crop and parse its raw output.
-
-    PaddleOCR's ``.ocr()`` return shape is ``[[ [box, (text, score)], ... ]]``
-    per image. We concatenate all recognized text fragments and take the
-    minimum score across them as a conservative confidence estimate.
-    """
-    try:
-        raw = reader.ocr(crop_bgr, cls=False)
-    except TypeError:
-        raw = reader.ocr(crop_bgr)
-
-    if not raw or raw[0] is None:
-        return OcrResult(raw_text="", confidence=0.0)
-
-    lines = raw[0]
+def _parse_paddle_legacy_lines(lines) -> OcrResult:
+    """Parse PaddleOCR 2.x-style output: a list of [box, (text, score)]."""
     texts = []
     scores = []
     for _box, (text, score) in lines:
@@ -145,8 +131,59 @@ def run_paddle_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
 
     if not texts:
         return OcrResult(raw_text="", confidence=0.0)
-
     return OcrResult(raw_text="".join(texts), confidence=min(scores))
+
+
+def _parse_paddle_v3_result(item) -> OcrResult:
+    """Parse PaddleOCR 3.x-style output: a dict-like Result with
+    ``rec_texts``/``rec_scores`` keys (from the PP-OCRv6 pipeline)."""
+    texts = item.get("rec_texts") or []
+    scores = item.get("rec_scores") or []
+
+    if not texts:
+        return OcrResult(raw_text="", confidence=0.0)
+
+    scores = [float(s) for s in scores] if scores else [0.0] * len(texts)
+    return OcrResult(raw_text="".join(texts), confidence=min(scores))
+
+
+def run_paddle_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
+    """Run a PaddleOCR reader over a crop and parse its raw output.
+
+    PaddleOCR 2.x's ``.ocr()`` returns ``[[ [box, (text, score)], ... ]]`` per
+    image. PaddleOCR 3.x's PP-OCRv6 pipeline instead returns a list of
+    dict-like ``Result`` objects with ``rec_texts``/``rec_scores`` keys. Both
+    shapes are handled here; in either case we concatenate all recognized
+    text fragments and take the minimum score across them as a conservative
+    confidence estimate.
+    """
+    try:
+        raw = reader.ocr(crop_bgr, cls=False)
+    except TypeError:
+        raw = reader.ocr(crop_bgr)
+    except Exception:  # noqa: BLE001 - .ocr() may not exist on some 3.x builds
+        raw = reader.predict(crop_bgr)
+
+    if not raw or raw[0] is None:
+        return OcrResult(raw_text="", confidence=0.0)
+
+    first = raw[0]
+
+    if hasattr(first, "get") or isinstance(first, dict):
+        return _parse_paddle_v3_result(first)
+
+    if isinstance(first, list):
+        return _parse_paddle_legacy_lines(first)
+
+    if hasattr(first, "rec_texts"):
+        texts = list(getattr(first, "rec_texts") or [])
+        scores = [float(s) for s in (getattr(first, "rec_scores", None) or [])]
+        if not texts:
+            return OcrResult(raw_text="", confidence=0.0)
+        scores = scores or [0.0] * len(texts)
+        return OcrResult(raw_text="".join(texts), confidence=min(scores))
+
+    return OcrResult(raw_text="", confidence=0.0)
 
 
 def run_easy_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
