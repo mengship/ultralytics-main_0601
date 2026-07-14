@@ -1,0 +1,13 @@
+{
+  "json_dir": "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/odometer_obb_ocr/case",
+  "output_dir": "/Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/odometer_obb_ocr/datasets/case_obb",
+  "seed": 42,
+  "val_ratio": 0.5,
+  "discovered_json_count": 2,
+  "converted_total": 2,
+  "train_count": 1,
+  "val_count": 1,
+  "image_dimension_mismatches": 0,
+  "clamped_boundary_drift_count": 0,
+  "skipped_count": 0
+}

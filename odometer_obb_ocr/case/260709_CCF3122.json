@@ -1,0 +1,137 @@
+{
+  "version": "4.0.0-beta.2",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          492.8444553040469,
+          555.567907257399
+        ],
+        [
+          525.1679441590084,
+          510.75028465874493
+        ],
+        [
+          542.1962366027091,
+          523.0314765004449
+        ],
+        [
+          509.8727477477477,
+          567.8490990990991
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 5.337216852598671
+    },
+    {
+      "label": "oil",
+      "score": null,
+      "points": [
+        [
+          237.13390313390312,
+          638.4615384615385
+        ],
+        [
+          363.6296296296296,
+          638.4615384615385
+        ],
+        [
+          363.6296296296296,
+          766.6666666666667
+        ],
+        [
+          237.13390313390312,
+          766.6666666666667
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "center",
+      "score": null,
+      "points": [
+        [
+          309.7225433526011,
+          690.805394990366
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          314.3468208092485,
+          756.7013487475914
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          335.15606936416185,
+          659.9768786127167
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          279.66473988439304,
+          650.7283236994219
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "260709_CCF3122.jpg",
+  "imageData": null,
+  "imageHeight": 1024,
+  "imageWidth": 768
+}

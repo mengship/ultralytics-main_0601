@@ -1,0 +1,136 @@
+{
+  "version": "4.0.0-beta.2",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "oil",
+      "score": null,
+      "points": [
+        [
+          1470.0,
+          349.2608695652172
+        ],
+        [
+          2038.1159420289853,
+          349.2608695652172
+        ],
+        [
+          2038.1159420289853,
+          876.7971014492749
+        ],
+        [
+          1470.0,
+          876.7971014492749
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "center",
+      "score": null,
+      "points": [
+        [
+          1813.4782608695652,
+          701.4347826086956
+        ]
+      ],
+      "group_id": null,
+      "description": null,
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          1537.380952380952,
+          755.8809523809523
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          1505.9523809523805,
+          618.7380952380952
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          1971.8518518518517,
+          435.44444444444446
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          224.62962962962956,
+          250.62962962962933
+        ],
+        [
+          539.4444444444443,
+          250.62962962962933
+        ],
+        [
+          539.4444444444443,
+          356.1851851851849
+        ],
+        [
+          224.62962962962956,
+          356.1851851851849
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "260709_CCF1234.jpg",
+  "imageData": null,
+  "imageHeight": 942,
+  "imageWidth": 2040
+}

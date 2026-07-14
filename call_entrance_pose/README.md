@@ -196,11 +196,11 @@ python call_entrance_pose/predict_pose_fuel.py \
 
 python call_entrance_pose/predict_pose_fuel.py \
   --model /home/wang/ultralytics-main_0601/runs/pose/runs/fuel_pose/pose_4kpt-3/weights/best.pt \
-  --source "/home/wang/datasets/data_relabel" \
+  --source "/home/wang/datasets/yolopose_dataset_convert/val/images" \
   --direction max_full_span \
-  --output-csv /home/wang/datasets/data_relabel_result/predict_result.csv \
+  --output-csv /home/wang/datasets/yolopose_dataset_convert_result/predict_result.csv \
   --save-vis \
-  --vis-dir /home/wang/datasets/data_relabel_result/predict_vis
+  --vis-dir /home/wang/datasets/yolopose_dataset_convert_result/predict_vis
 ```
 
 The angle calculation rule is:

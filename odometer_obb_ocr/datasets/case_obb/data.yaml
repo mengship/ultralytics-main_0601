@@ -1,0 +1,5 @@
+path: /Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/odometer_obb_ocr/datasets/case_obb
+train: train/images
+val: val/images
+names:
+  0: odometer
