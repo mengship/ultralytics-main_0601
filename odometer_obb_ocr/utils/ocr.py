@@ -255,12 +255,56 @@ def run_easy_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
     return OcrResult(raw_text="".join(texts), confidence=min(scores))
 
 
+def preprocess_for_low_res_ocr(crop_bgr: np.ndarray) -> np.ndarray:
+    """Preprocess low-resolution crops for better OCR accuracy.
+
+    Applies a series of image enhancement techniques:
+    1. Upscale by 4x using INTER_CUBIC
+    2. Convert to grayscale
+    3. Denoise with bilateral filter
+    4. Adaptive histogram equalization (CLAHE) for contrast
+    5. Adaptive threshold (binarization)
+
+    This pipeline is optimized for small, low-quality odometer digit crops
+    common in industrial mobile phone captures.
+    """
+    h, w = crop_bgr.shape[:2]
+
+    # 1. Aggressive upscaling (4x)
+    scale = 4
+    new_w, new_h = w * scale, h * scale
+    upscaled = cv2.resize(crop_bgr, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+    # 2. Convert to grayscale
+    gray = cv2.cvtColor(upscaled, cv2.COLOR_BGR2GRAY)
+
+    # 3. Denoise while preserving edges
+    denoised = cv2.bilateralFilter(gray, 9, 75, 75)
+
+    # 4. Enhance contrast with CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(denoised)
+
+    # 5. Adaptive threshold for binarization
+    binary = cv2.adaptiveThreshold(
+        enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 11, 2
+    )
+
+    # Convert back to BGR for Tesseract
+    return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
+
+
 def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
     """Run Tesseract OCR over a crop with optimized settings for vertical text.
 
-    Uses PSM 6 (single uniform block of vertical text) which is ideal for
-    vertically-stacked odometer digits. The LSTM engine (OEM 1) handles
-    rotation and text direction better than the legacy engine.
+    Uses PSM 12 (sparse text with OSD) which works best for difficult crops.
+    The LSTM engine (OEM 1) handles rotation and text direction better than
+    the legacy engine.
+
+    For industrial robustness with low-resolution images, applies aggressive
+    preprocessing: 4x upscaling, denoising, contrast enhancement, and
+    binarization before OCR.
 
     Returns concatenated text from all detected regions with the minimum
     confidence as a conservative estimate.
@@ -268,20 +312,18 @@ def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
     pytesseract = _require_pytesseract()
     check_tesseract_available()
 
-    # Custom config optimized for vertical digit recognition
-    # --psm 6: Assume a single uniform block of vertically aligned text
-    # --oem 1: Use LSTM neural network engine (better for rotated text)
-    # -c tessedit_char_whitelist: Restrict to digits and km/KM
-    custom_config = (
-        r'--oem 1 --psm 6 '
-        r'-c tessedit_char_whitelist=0123456789kmKM '
-        r'-c preserve_interword_spaces=0'
-    )
+    # Preprocess for low-resolution images
+    processed = preprocess_for_low_res_ocr(crop_bgr)
+
+    # Custom config optimized for processed images
+    # PSM 12: Sparse text with OSD (best for difficult crops)
+    # --oem 1: Use LSTM neural network engine
+    custom_config = r'--oem 1 --psm 12'
 
     try:
         # Get detailed output with confidence scores
         data = pytesseract.image_to_data(
-            crop_bgr,
+            processed,
             config=custom_config,
             output_type=pytesseract.Output.DICT
         )
@@ -306,8 +348,8 @@ def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
         # Return error details for debugging
         import sys
         print(f"[Tesseract Error] {e}", file=sys.stderr)
-        print(f"[Tesseract] Crop shape: {crop_bgr.shape}", file=sys.stderr)
-        print(f"[Tesseract] Config: {custom_config}", file=sys.stderr)
+        print(f"[Tesseract] Original crop shape: {crop_bgr.shape}", file=sys.stderr)
+        print(f"[Tesseract] Processed shape: {processed.shape}", file=sys.stderr)
         return OcrResult(raw_text="", confidence=0.0)
 
 
