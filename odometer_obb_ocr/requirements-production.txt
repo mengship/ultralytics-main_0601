@@ -1,0 +1,38 @@
+# 生产环境依赖清单
+
+## 核心依赖（必需）
+
+```bash
+ultralytics>=8.0.0
+paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+```
+
+## 安装命令
+
+### CPU环境（推荐）
+```bash
+pip install ultralytics paddlepaddle paddleocr opencv-python numpy
+```
+
+### GPU环境（可选，性能提升）
+```bash
+pip install ultralytics paddlepaddle-gpu paddleocr opencv-python numpy
+```
+
+## 验证安装
+
+```bash
+python -c "from ultralytics import YOLO; print('YOLO OK')"
+python -c "from paddleocr import PaddleOCR; print('PaddleOCR OK')"
+python -c "import cv2; print('OpenCV OK')"
+```
+
+## 精简版（仅生产）
+
+如果只用PaddleOCR，不需要安装：
+- ❌ easyocr
+- ❌ pytesseract
+- ❌ tesseract-ocr
