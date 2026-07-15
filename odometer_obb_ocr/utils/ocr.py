@@ -278,28 +278,37 @@ def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
         r'-c preserve_interword_spaces=0'
     )
 
-    # Get detailed output with confidence scores
-    data = pytesseract.image_to_data(
-        crop_bgr,
-        config=custom_config,
-        output_type=pytesseract.Output.DICT
-    )
+    try:
+        # Get detailed output with confidence scores
+        data = pytesseract.image_to_data(
+            crop_bgr,
+            config=custom_config,
+            output_type=pytesseract.Output.DICT
+        )
 
-    # Extract text and confidence from detected words
-    texts = []
-    confidences = []
+        # Extract text and confidence from detected words
+        texts = []
+        confidences = []
 
-    for i, text in enumerate(data['text']):
-        conf = int(data['conf'][i])
-        if conf > 0 and text.strip():  # Filter out empty/low-confidence
-            texts.append(text.strip())
-            confidences.append(conf / 100.0)  # Convert to 0-1 range
+        for i, text in enumerate(data['text']):
+            conf = int(data['conf'][i])
+            if conf > 0 and text.strip():  # Filter out empty/low-confidence
+                texts.append(text.strip())
+                confidences.append(conf / 100.0)  # Convert to 0-1 range
 
-    if not texts:
+        if not texts:
+            return OcrResult(raw_text="", confidence=0.0)
+
+        # Concatenate all text and use minimum confidence
+        return OcrResult(raw_text="".join(texts), confidence=min(confidences))
+
+    except Exception as e:
+        # Return error details for debugging
+        import sys
+        print(f"[Tesseract Error] {e}", file=sys.stderr)
+        print(f"[Tesseract] Crop shape: {crop_bgr.shape}", file=sys.stderr)
+        print(f"[Tesseract] Config: {custom_config}", file=sys.stderr)
         return OcrResult(raw_text="", confidence=0.0)
-
-    # Concatenate all text and use minimum confidence
-    return OcrResult(raw_text="".join(texts), confidence=min(confidences))
 
 
 def recognize(engine: str, crop_bgr: np.ndarray) -> OcrResult:
