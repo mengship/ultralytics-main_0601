@@ -111,6 +111,15 @@ python odometer_obb_ocr/predict_odometer.py \
   --save-crops --save-vis
 ```
 
+**OCR engine options:**
+- `--ocr-engine paddle` (default): PaddleOCR with angle classification
+- `--ocr-engine easy`: EasyOCR 
+- `--ocr-engine tesseract`: Tesseract 5.x with PSM 6 (optimized for vertical text)
+
+For industrial scenarios with vertically-stacked digits, **Tesseract is recommended** for its
+robustness and specialized vertical text mode. See [TESSERACT_GUIDE.md](TESSERACT_GUIDE.md) for
+installation and usage details.
+
 For each source image, the highest-confidence `odometer` detection above `--det-conf` (default
 0.25) is selected, its four corners are ordered into top-left/top-right/bottom-right/bottom-left
 regardless of the model's raw point order, validated (rejecting self-crossing, non-convex,
@@ -136,15 +145,23 @@ OCR text, extracted mileage digits (or null), detection confidence, OCR confiden
 four points, and the rectified crop / visualization paths if `--save-crops` / `--save-vis` were
 passed.
 
-PaddleOCR (`--ocr-engine paddle`, the default) and EasyOCR (`--ocr-engine easy`) are optional
-dependencies — see `requirements-optional.txt`. Importing `predict_odometer.py` or `utils/ocr.py`
-never requires either package; only actually running OCR with a given engine does, and an
-actionable install message is raised if that engine isn't installed. PaddleOCR's constructor kwargs
-(e.g. `use_angle_cls` vs `use_textline_orientation`) vary by installed version, so `utils/ocr.py`
-tries a few known-good spellings and falls back to a bare `PaddleOCR(lang="en")`. Angle
-classification is enabled to handle text at any orientation. There is no reliable cross-version
-PaddleOCR kwarg for restricting recognition to a charset, so `0123456789kmKM` restriction is
-applied as post-processing via `extract_digits` rather than at the engine level.
+PaddleOCR (`--ocr-engine paddle`, the default), EasyOCR (`--ocr-engine easy`), and Tesseract
+(`--ocr-engine tesseract`) are optional dependencies — see `requirements-optional.txt`. Importing
+`predict_odometer.py` or `utils/ocr.py` never requires any OCR package; only actually running OCR
+with a given engine does, and an actionable install message is raised if that engine isn't
+installed.
+
+**Tesseract** (recommended for industrial scenarios) requires both `pip install pytesseract` and
+system installation of the Tesseract 5.x binary — see [TESSERACT_GUIDE.md](TESSERACT_GUIDE.md).
+It uses PSM 6 (single uniform vertical block) which is optimized for vertically-stacked odometer
+digits common in industrial dashboards.
+
+PaddleOCR's constructor kwargs (e.g. `use_angle_cls` vs `use_textline_orientation`) vary by
+installed version, so `utils/ocr.py` tries a few known-good spellings and falls back to a bare
+`PaddleOCR(lang="en")`. Angle classification is enabled to handle text at any orientation. There
+is no reliable cross-version PaddleOCR kwarg for restricting recognition to a charset, so
+`0123456789kmKM` restriction is applied as post-processing via `extract_digits` rather than at the
+engine level.
 
 ## Tests
 

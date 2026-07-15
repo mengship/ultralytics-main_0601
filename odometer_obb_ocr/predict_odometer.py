@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--model", required=True, help="Path to trained YOLO OBB weights")
     parser.add_argument("--source", required=True, help="Image file or directory")
-    parser.add_argument("--ocr-engine", choices=["paddle", "easy"], default="paddle")
+    parser.add_argument("--ocr-engine", choices=["paddle", "easy", "tesseract"], default="paddle")
     parser.add_argument("--det-conf", type=float, default=0.25)
     parser.add_argument("--ocr-conf", type=float, default=0.70)
     parser.add_argument("--crop-padding-ratio", type=float, default=0.02)

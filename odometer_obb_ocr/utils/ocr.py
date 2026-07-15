@@ -54,8 +54,25 @@ def _require_easyocr():
     return easyocr
 
 
+def _require_pytesseract():
+    try:
+        import pytesseract
+    except ImportError as exc:
+        raise OcrEngineError(
+            "pytesseract is not installed. Install it with:\n"
+            "    pip install pytesseract\n"
+            "And ensure Tesseract 5.x is installed:\n"
+            "    Ubuntu/Debian: sudo apt-get install tesseract-ocr\n"
+            "    CentOS/RHEL: sudo yum install tesseract\n"
+            "    macOS: brew install tesseract\n"
+            "See odometer_obb_ocr/requirements-optional.txt."
+        ) from exc
+    return pytesseract
+
+
 _PADDLE_SINGLETON = None
 _EASY_SINGLETON = None
+_TESSERACT_AVAILABLE = None
 
 
 def get_paddle_reader():
@@ -125,6 +142,26 @@ def get_easy_reader():
         easyocr = _require_easyocr()
         _EASY_SINGLETON = easyocr.Reader(["en"], gpu=False)
     return _EASY_SINGLETON
+
+
+def check_tesseract_available():
+    """Check if Tesseract is properly installed and accessible."""
+    global _TESSERACT_AVAILABLE
+    if _TESSERACT_AVAILABLE is None:
+        pytesseract = _require_pytesseract()
+        try:
+            # Try to get Tesseract version
+            version = pytesseract.get_tesseract_version()
+            _TESSERACT_AVAILABLE = True
+        except Exception:
+            raise OcrEngineError(
+                "Tesseract is installed via pip but the tesseract binary is not found.\n"
+                "Install Tesseract OCR:\n"
+                "    Ubuntu/Debian: sudo apt-get install tesseract-ocr\n"
+                "    CentOS/RHEL: sudo yum install tesseract\n"
+                "    macOS: brew install tesseract"
+            )
+    return _TESSERACT_AVAILABLE
 
 
 def _parse_paddle_legacy_lines(lines) -> OcrResult:
@@ -218,15 +255,63 @@ def run_easy_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
     return OcrResult(raw_text="".join(texts), confidence=min(scores))
 
 
+def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
+    """Run Tesseract OCR over a crop with optimized settings for vertical text.
+
+    Uses PSM 6 (single uniform block of vertical text) which is ideal for
+    vertically-stacked odometer digits. The LSTM engine (OEM 1) handles
+    rotation and text direction better than the legacy engine.
+
+    Returns concatenated text from all detected regions with the minimum
+    confidence as a conservative estimate.
+    """
+    pytesseract = _require_pytesseract()
+    check_tesseract_available()
+
+    # Custom config optimized for vertical digit recognition
+    # --psm 6: Assume a single uniform block of vertically aligned text
+    # --oem 1: Use LSTM neural network engine (better for rotated text)
+    # -c tessedit_char_whitelist: Restrict to digits and km/KM
+    custom_config = (
+        r'--oem 1 --psm 6 '
+        r'-c tessedit_char_whitelist=0123456789kmKM '
+        r'-c preserve_interword_spaces=0'
+    )
+
+    # Get detailed output with confidence scores
+    data = pytesseract.image_to_data(
+        crop_bgr,
+        config=custom_config,
+        output_type=pytesseract.Output.DICT
+    )
+
+    # Extract text and confidence from detected words
+    texts = []
+    confidences = []
+
+    for i, text in enumerate(data['text']):
+        conf = int(data['conf'][i])
+        if conf > 0 and text.strip():  # Filter out empty/low-confidence
+            texts.append(text.strip())
+            confidences.append(conf / 100.0)  # Convert to 0-1 range
+
+    if not texts:
+        return OcrResult(raw_text="", confidence=0.0)
+
+    # Concatenate all text and use minimum confidence
+    return OcrResult(raw_text="".join(texts), confidence=min(confidences))
+
+
 def recognize(engine: str, crop_bgr: np.ndarray) -> OcrResult:
     """Run the requested OCR engine over a rectified crop.
 
-    ``engine`` must be ``"paddle"`` or ``"easy"``. Lazily constructs and
-    caches the reader for the selected engine.
+    ``engine`` must be ``"paddle"``, ``"easy"``, or ``"tesseract"``. Lazily
+    constructs and caches the reader for the selected engine.
 
-    Both engines are configured to handle text at any orientation (vertical,
-    rotated, upside-down) natively through their angle classification models,
-    so no manual rotation is required.
+    - PaddleOCR and EasyOCR are configured with angle classification enabled
+      to handle text at any orientation natively.
+    - Tesseract uses PSM 6 (single uniform vertical block) which is optimized
+      for vertically-stacked odometer digits common in industrial dashboards.
     """
     if engine == "paddle":
         reader = get_paddle_reader()
@@ -234,7 +319,9 @@ def recognize(engine: str, crop_bgr: np.ndarray) -> OcrResult:
     if engine == "easy":
         reader = get_easy_reader()
         return run_easy_ocr(reader, crop_bgr)
-    raise ValueError(f"unknown OCR engine '{engine}', expected 'paddle' or 'easy'")
+    if engine == "tesseract":
+        return run_tesseract_ocr(crop_bgr)
+    raise ValueError(f"unknown OCR engine '{engine}', expected 'paddle', 'easy', or 'tesseract'")
 
 
 def extract_digits(raw_text: str) -> str:
