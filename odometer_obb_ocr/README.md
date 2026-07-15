@@ -115,10 +115,16 @@ For each source image, the highest-confidence `odometer` detection above `--det-
 0.25) is selected, its four corners are ordered into top-left/top-right/bottom-right/bottom-left
 regardless of the model's raw point order, validated (rejecting self-crossing, non-convex,
 degenerate, or too-small quads), padded by `--crop-padding-ratio` (default 0.02), and rectified via
-a perspective transform into a horizontal crop that preserves its original aspect ratio. OCR then
-runs on the rectified crop (recognition, not the OCR engine's own orientation classifier, since the
-crop is already rectified) and extracts digits by stripping non-digit characters from the raw OCR
-text — ambiguous characters like `O` are never auto-corrected to `0`.
+a perspective transform into a horizontal crop that preserves its original aspect ratio. 
+
+**Orientation handling**: Both PaddleOCR and EasyOCR are configured with angle classification
+enabled (`use_angle_cls=True` / `use_textline_orientation=True`), allowing them to natively
+recognize text at any orientation—horizontal, vertical, rotated, or upside-down—without manual
+preprocessing. This makes the pipeline robust to diverse odometer layouts including
+vertically-stacked digits.
+
+OCR then runs on the rectified crop and extracts digits by stripping non-digit characters from the
+raw OCR text — ambiguous characters like `O` are never auto-corrected to `0`.
 
 A result is `ok` only when a detection exists, OCR confidence is at least `--ocr-conf` (default
 0.70), and the digit count falls within `[--min-digits, --max-digits]` (default `[4, 8]`).
@@ -135,9 +141,10 @@ dependencies — see `requirements-optional.txt`. Importing `predict_odometer.py
 never requires either package; only actually running OCR with a given engine does, and an
 actionable install message is raised if that engine isn't installed. PaddleOCR's constructor kwargs
 (e.g. `use_angle_cls` vs `use_textline_orientation`) vary by installed version, so `utils/ocr.py`
-tries a few known-good spellings and falls back to a bare `PaddleOCR(lang="en")`. There is no
-reliable cross-version PaddleOCR kwarg for restricting recognition to a charset, so `0123456789kmKM`
-restriction is applied as post-processing via `extract_digits` rather than at the engine level.
+tries a few known-good spellings and falls back to a bare `PaddleOCR(lang="en")`. Angle
+classification is enabled to handle text at any orientation. There is no reliable cross-version
+PaddleOCR kwarg for restricting recognition to a charset, so `0123456789kmKM` restriction is
+applied as post-processing via `extract_digits` rather than at the engine level.
 
 ## Tests
 

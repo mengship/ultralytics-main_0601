@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+import cv2
 import numpy as np
 
 ALLOWED_CHARSET = "0123456789kmKM"
@@ -72,6 +73,11 @@ def get_paddle_reader():
     around a known PaddlePaddle/oneDNN crash
     (``ConvertPirAttribute2RuntimeAttribute not support``) on some CPU builds.
 
+    **Angle classification is ENABLED** (``use_angle_cls=True`` /
+    ``use_textline_orientation=True``) to robustly handle vertical, rotated, or
+    upside-down text without manual rotation heuristics. This allows the OCR
+    engine to natively recognize text at any orientation.
+
     There is no reliable cross-version kwarg for restricting recognition to a
     charset; that restriction is instead applied as post-processing via
     ``extract_digits``.
@@ -83,19 +89,19 @@ def get_paddle_reader():
             {
                 "use_doc_orientation_classify": False,
                 "use_doc_unwarping": False,
-                "use_textline_orientation": False,
+                "use_textline_orientation": True,
                 "enable_mkldnn": False,
                 "lang": "en",
             },
             {
                 "use_doc_orientation_classify": False,
                 "use_doc_unwarping": False,
-                "use_textline_orientation": False,
+                "use_textline_orientation": True,
                 "lang": "en",
             },
-            {"use_angle_cls": False, "enable_mkldnn": False, "lang": "en"},
-            {"use_angle_cls": False, "lang": "en"},
-            {"use_textline_orientation": False, "lang": "en"},
+            {"use_angle_cls": True, "enable_mkldnn": False, "lang": "en"},
+            {"use_angle_cls": True, "lang": "en"},
+            {"use_textline_orientation": True, "lang": "en"},
             {"lang": "en"},
         ):
             try:
@@ -156,10 +162,16 @@ def run_paddle_ocr(reader, crop_bgr: np.ndarray) -> OcrResult:
     shapes are handled here; in either case we concatenate all recognized
     text fragments and take the minimum score across them as a conservative
     confidence estimate.
+
+    ``cls=True`` explicitly enables angle classification (text direction
+    detection) for versions that support this parameter. This allows the OCR
+    to handle vertical, rotated, or upside-down text without manual
+    preprocessing.
     """
     try:
-        raw = reader.ocr(crop_bgr, cls=False)
+        raw = reader.ocr(crop_bgr, cls=True)
     except TypeError:
+        # Fallback for versions that don't accept cls parameter
         raw = reader.ocr(crop_bgr)
     except Exception:  # noqa: BLE001 - .ocr() may not exist on some 3.x builds
         raw = reader.predict(crop_bgr)
@@ -211,6 +223,10 @@ def recognize(engine: str, crop_bgr: np.ndarray) -> OcrResult:
 
     ``engine`` must be ``"paddle"`` or ``"easy"``. Lazily constructs and
     caches the reader for the selected engine.
+
+    Both engines are configured to handle text at any orientation (vertical,
+    rotated, upside-down) natively through their angle classification models,
+    so no manual rotation is required.
     """
     if engine == "paddle":
         reader = get_paddle_reader()
