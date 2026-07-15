@@ -263,10 +263,11 @@ def preprocess_for_low_res_ocr(crop_bgr: np.ndarray) -> np.ndarray:
     2. Convert to grayscale
     3. Denoise with bilateral filter
     4. Adaptive histogram equalization (CLAHE) for contrast
-    5. Adaptive threshold (binarization)
+    5. Sharpen to enhance edges
 
-    This pipeline is optimized for small, low-quality odometer digit crops
-    common in industrial mobile phone captures.
+    Note: Does NOT apply binarization, as it can cause digits to be
+    misrecognized as letters. Tesseract's internal preprocessing handles
+    that better for digit recognition.
     """
     h, w = crop_bgr.shape[:2]
 
@@ -282,17 +283,17 @@ def preprocess_for_low_res_ocr(crop_bgr: np.ndarray) -> np.ndarray:
     denoised = cv2.bilateralFilter(gray, 9, 75, 75)
 
     # 4. Enhance contrast with CLAHE
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(denoised)
 
-    # 5. Adaptive threshold for binarization
-    binary = cv2.adaptiveThreshold(
-        enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 11, 2
-    )
+    # 5. Sharpen to enhance digit edges
+    kernel = np.array([[-1, -1, -1],
+                       [-1,  9, -1],
+                       [-1, -1, -1]])
+    sharpened = cv2.filter2D(enhanced, -1, kernel)
 
     # Convert back to BGR for Tesseract
-    return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
+    return cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
 
 
 def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
@@ -316,9 +317,13 @@ def run_tesseract_ocr(crop_bgr: np.ndarray) -> OcrResult:
     processed = preprocess_for_low_res_ocr(crop_bgr)
 
     # Custom config optimized for processed images
-    # PSM 12: Sparse text with OSD (best for difficult crops)
+    # PSM 6: Single uniform block of vertical text
     # --oem 1: Use LSTM neural network engine
-    custom_config = r'--oem 1 --psm 12'
+    # Whitelist: Only digits and km/KM to prevent letter misrecognition
+    custom_config = (
+        r'--oem 1 --psm 6 '
+        r'-c tessedit_char_whitelist=0123456789kmKM'
+    )
 
     try:
         # Get detailed output with confidence scores

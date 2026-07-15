@@ -214,6 +214,23 @@ def main() -> None:
     print(f"\nRecords written to: {output_dir / 'predictions.json'}")
     print(f"Records written to: {output_dir / 'predictions.csv'}")
 
+    # Print detailed results for each image
+    print("\n" + "=" * 70)
+    print("DETAILED RESULTS")
+    print("=" * 70)
+    for i, row in enumerate(rows, 1):
+        print(f"\n[{i}] {Path(row['source_path']).name}")
+        print(f"  Status:          {row['status']}")
+        print(f"  Raw OCR Text:    '{row['raw_ocr_text']}'")
+        print(f"  Mileage Digits:  {row['mileage_digits']}")
+        print(f"  Detection Conf:  {row['det_conf']:.3f}" if row['det_conf'] else "  Detection Conf:  N/A")
+        print(f"  OCR Confidence:  {row['ocr_conf']:.3f}" if row['ocr_conf'] else "  OCR Confidence:  N/A")
+        if row['status'] != 'ok' and row['detail']:
+            print(f"  Detail:          {row['detail']}")
+        if row['crop_path']:
+            print(f"  Crop saved:      {row['crop_path']}")
+    print("=" * 70)
+
 
 if __name__ == "__main__":
     main()
