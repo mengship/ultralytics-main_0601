@@ -1,0 +1,120 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          458.5454545454545,
+          445.17171717171715
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          455.5151515151515,
+          302.74747474747477
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          458.5454545454545,
+          317.8989898989899
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "oil1",
+      "score": null,
+      "points": [
+        [
+          418.14141414141415,
+          271.4343434343434
+        ],
+        [
+          502.98989898989896,
+          271.4343434343434
+        ],
+        [
+          502.98989898989896,
+          483.55555555555554
+        ],
+        [
+          418.14141414141415,
+          483.55555555555554
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          541.3737373737373,
+          268.4040404040404
+        ],
+        [
+          602.989898989899,
+          268.4040404040404
+        ],
+        [
+          602.989898989899,
+          480.52525252525254
+        ],
+        [
+          541.3737373737373,
+          480.52525252525254
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 0
+    }
+  ],
+  "imagePath": "260622_NGC7836.jpg",
+  "imageData": null,
+  "imageHeight": 756,
+  "imageWidth": 1008
+}

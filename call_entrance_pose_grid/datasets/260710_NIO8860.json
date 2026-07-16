@@ -1,0 +1,121 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "oil1",
+      "score": null,
+      "points": [
+        [
+          331.8604638571398,
+          616.7040196296406
+        ],
+        [
+          357.2902486028555,
+          584.6584674117906
+        ],
+        [
+          433.2004853826585,
+          644.8971229413856
+        ],
+        [
+          407.7707006369427,
+          676.9426751592356
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 5.383185307179589
+    },
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          357.45222929936307,
+          608.7898089171974
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          371.4649681528663,
+          620.2547770700637
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          408.4076433121019,
+          648.9171974522293
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          295.031847133758,
+          650.828025477707
+        ],
+        [
+          314.5509603426511,
+          626.2308545682253
+        ],
+        [
+          400.12738853503186,
+          694.140127388535
+        ],
+        [
+          380.6082753261388,
+          718.7372982980169
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 5.383185307179589
+    }
+  ],
+  "imagePath": "260710_NIO8860.jpg",
+  "imageData": null,
+  "imageHeight": 1280,
+  "imageWidth": 720
+}

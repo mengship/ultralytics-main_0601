@@ -1,0 +1,119 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          403.83673469387753,
+          187.57142857142856
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          528.3265306122449,
+          195.734693877551
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          770.1632653061224,
+          212.0612244897959
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "oil1",
+      "score": null,
+      "points": [
+        [
+          330.36734693877554,
+          98.79591836734694
+        ],
+        [
+          838.530612244898,
+          98.79591836734694
+        ],
+        [
+          838.530612244898,
+          311.0408163265306
+        ],
+        [
+          330.36734693877554,
+          311.0408163265306
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          298.734693877551,
+          423.2857142857143
+        ],
+        [
+          857.9183673469388,
+          423.2857142857143
+        ],
+        [
+          857.9183673469388,
+          557.9795918367347
+        ],
+        [
+          298.734693877551,
+          557.9795918367347
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "260710_CCC5621.jpg",
+  "imageData": null,
+  "imageHeight": 768,
+  "imageWidth": 1024
+}

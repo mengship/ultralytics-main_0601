@@ -1,0 +1,121 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          761.1111111111111,
+          936.5079365079365
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          784.9206349206349,
+          815.8730158730159
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          772.2222222222222,
+          867.4603174603175
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "oil1",
+      "score": null,
+      "points": [
+        [
+          750.2380012324676,
+          784.657370301483
+        ],
+        [
+          816.3540435895476,
+          794.6498327802716
+        ],
+        [
+          789.925566166604,
+          969.5162720025983
+        ],
+        [
+          723.8095238095239,
+          959.5238095238095
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 0.14999999999999894
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          862.4941644896755,
+          798.702759621189
+        ],
+        [
+          906.9016586655805,
+          807.7046043424378
+        ],
+        [
+          869.047619047619,
+          994.4444444444445
+        ],
+        [
+          824.6401248717141,
+          985.4425997231957
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rotation",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": [],
+      "direction": 0.2
+    }
+  ],
+  "imagePath": "260709_NHJ9690.jpg",
+  "imageData": null,
+  "imageHeight": 1500,
+  "imageWidth": 1500
+}

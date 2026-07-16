@@ -1,0 +1,119 @@
+{
+  "version": "2.5.4",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "empty",
+      "score": null,
+      "points": [
+        [
+          291.07142857142856,
+          569.047619047619
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "full",
+      "score": null,
+      "points": [
+        [
+          401.1904761904762,
+          567.2619047619048
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "tip",
+      "score": null,
+      "points": [
+        [
+          386.3095238095238,
+          566.0714285714286
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "point",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "oil1",
+      "score": null,
+      "points": [
+        [
+          272.61904761904765,
+          542.8571428571429
+        ],
+        [
+          423.2142857142857,
+          542.8571428571429
+        ],
+        [
+          423.2142857142857,
+          597.0238095238095
+        ],
+        [
+          272.61904761904765,
+          597.0238095238095
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    },
+    {
+      "label": "odometer",
+      "score": null,
+      "points": [
+        [
+          257.14285714285717,
+          630.952380952381
+        ],
+        [
+          427.3809523809524,
+          630.952380952381
+        ],
+        [
+          427.3809523809524,
+          681.547619047619
+        ],
+        [
+          257.14285714285717,
+          681.547619047619
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "difficult": false,
+      "shape_type": "rectangle",
+      "flags": {},
+      "attributes": {},
+      "kie_linking": []
+    }
+  ],
+  "imagePath": "260710_NHF4022.jpg",
+  "imageData": null,
+  "imageHeight": 1000,
+  "imageWidth": 750
+}

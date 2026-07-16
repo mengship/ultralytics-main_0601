@@ -402,6 +402,16 @@ python call_entrance_pose/predict_pose_fuel_two_stage.py \
   --direction max_full_span \
   --save-vis \
   --crop-dir call_entrance_pose/crops
+
+云服务器实际路径
+python call_entrance_pose/predict_pose_fuel_two_stage.py \
+  --det-model /home/wang/ultralytics-main_0601/call_entrance/runs/detect/runs/fuel_yolo/detect_2class/weights/best.pt \
+  --pose-model /home/wang/ultralytics-main_0601/runs/pose/runs/fuel_pose/pose_crop_4kpt/weights/best.pt \
+  --source /home/wang//datasets/yolopose_dataset_convert/val/images/ \
+  --box-padding 0.08 \
+  --direction max_full_span \
+  --save-vis \
+  --crop-dir call_entrance_pose/crops
 ```
 
 #### 二阶段预测参数说明

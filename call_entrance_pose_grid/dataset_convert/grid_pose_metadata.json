@@ -1,0 +1,56 @@
+{
+  "train": [
+    {
+      "json_file": "260709_NHJ9690.json",
+      "image_file": "260709_NHJ9690.jpg",
+      "label_file": "260709_NHJ9690.txt",
+      "image_size": [
+        1500,
+        1500
+      ],
+      "split": "train"
+    },
+    {
+      "json_file": "260710_CCC5621.json",
+      "image_file": "260710_CCC5621.jpg",
+      "label_file": "260710_CCC5621.txt",
+      "image_size": [
+        1024,
+        768
+      ],
+      "split": "train"
+    },
+    {
+      "json_file": "260710_NIO8860.json",
+      "image_file": "260710_NIO8860.jpg",
+      "label_file": "260710_NIO8860.txt",
+      "image_size": [
+        720,
+        1280
+      ],
+      "split": "train"
+    },
+    {
+      "json_file": "260622_NGC7836.json",
+      "image_file": "260622_NGC7836.jpg",
+      "label_file": "260622_NGC7836.txt",
+      "image_size": [
+        1008,
+        756
+      ],
+      "split": "train"
+    }
+  ],
+  "val": [
+    {
+      "json_file": "260710_NHF4022.json",
+      "image_file": "260710_NHF4022.jpg",
+      "label_file": "260710_NHF4022.txt",
+      "image_size": [
+        750,
+        1000
+      ],
+      "split": "val"
+    }
+  ]
+}
