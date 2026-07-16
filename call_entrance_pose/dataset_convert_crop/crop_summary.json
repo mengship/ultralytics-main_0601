@@ -1,0 +1,16 @@
+{
+  "train": {
+    "total_labels": 1,
+    "cropped": 1,
+    "skipped_missing_image": 0,
+    "skipped_not_single_line": 0,
+    "skipped_invalid_crop": 0
+  },
+  "val": {
+    "total_labels": 0,
+    "cropped": 0,
+    "skipped_missing_image": 0,
+    "skipped_not_single_line": 0,
+    "skipped_invalid_crop": 0
+  }
+}

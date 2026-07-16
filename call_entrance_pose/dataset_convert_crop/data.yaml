@@ -1,0 +1,13 @@
+path: /Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose/dataset_convert_crop
+train: train/images
+val: val/images
+kpt_shape:
+- 4
+- 2
+flip_idx:
+- 0
+- 1
+- 2
+- 3
+names:
+  0: oil_pose
