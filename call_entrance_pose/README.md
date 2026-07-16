@@ -118,7 +118,134 @@ dataset_convert/
 
 ---
 
-## 步骤 2：裁剪数据集
+## 步骤 2：裁剪数据集你是资深 Python / Ultralytics 工程师，请在仓库 `ultralytics-main_0601` 里重构 `call_entrance_pose`，把“裁剪”和“训练”拆成两个脚本。
+
+目标：
+1. 新增一个只负责裁剪数据集的脚本
+2. 把 `call_entrance_pose/train_yolo_fuel_pose_crop.py` 改成只负责训练
+3. 更新 `call_entrance_pose/README.md`，用中文说明新流程
+
+请不要改 `predict_pose_fuel.py`，不要改关键点顺序和标签格式。
+
+---
+
+## 现有标签格式
+
+YOLO Pose 标签格式固定为：
+
+`class cx cy w h center_x center_y tip_x tip_y empty_x empty_y full_x full_y`
+
+关键点顺序固定为：
+
+- 0 center
+- 1 tip
+- 2 empty
+- 3 full
+
+---
+
+## 任务 1：新增裁剪脚本
+
+新增一个脚本，例如：
+
+`call_entrance_pose/crop_yolo_fuel_pose_dataset.py`
+
+它只做裁剪，不训练，不依赖 `ultralytics`。
+
+### 输入
+- 读取现有 YOLO Pose 数据集的 `data.yaml`
+- 支持 `train` / `val`
+- 支持常见 YOLO 目录结构
+
+### 裁剪规则
+- 每张图只有一个油表框，不会有多个
+- 每个标签文件只有 1 行
+- 读取 bbox `cx cy w h`
+- 还原成像素坐标 `xyxy`
+- 裁剪时要稍微裁大一点，默认保留一点 padding，防止把重要信息裁掉
+- `--crop-padding` 建议默认 0.05 或 0.1
+- 将 bbox 和 `center / tip / empty / full` 全部重映射到 crop 坐标系
+- 再重新归一化到 `[0, 1]`
+
+### 输出
+- 输出新的数据集目录，例如 `call_entrance_pose/dataset_convert_crop`
+- 目录结构：
+  - `train/images`
+  - `train/labels`
+  - `val/images`
+  - `val/labels`
+- 生成新的 `data.yaml`
+- 生成 `crop_summary.json`
+
+### 异常处理
+- 如果图片缺失、标签异常、标签不是 1 行，直接跳过并统计
+- 输出统计信息：
+  - 裁了多少
+  - 缺图多少
+  - 无效标签多少
+  - 无效 crop 多少
+
+---
+
+## 任务 2：训练脚本改成纯训练
+
+把 `call_entrance_pose/train_yolo_fuel_pose_crop.py` 改成纯训练脚本。
+
+### 要求
+- 只读取裁剪后的数据集 `data.yaml`
+- 只调用 `YOLO(...).train(...)`
+- 删除其中所有裁剪、重映射、生成数据集的逻辑
+- 参数风格可以沿用当前 `train_yolo_fuel_pose.py`
+- 默认 `--data` 可以指向 crop 后的数据集，例如：
+  - `call_entrance_pose/dataset_convert_crop/data.yaml`
+
+---
+
+## 任务 3：更新 README
+
+把 `call_entrance_pose/README.md` 更新成中文，重点写清楚：
+
+- pose 数据的标签格式
+- 裁剪脚本怎么用
+- 训练脚本怎么用
+- 两阶段流程：
+  1. 先按标注框裁剪
+  2. 再训练
+- 命令示例要完整
+
+---
+
+## 代码要求
+- 只改 `call_entrance_pose` 相关文件
+- 不要回滚别的无关改动
+- 代码里把这些步骤写清楚注释：
+  - bbox 还原
+  - crop 裁剪
+  - bbox 重映射
+  - keypoint 重映射
+- 保持仓库现有风格
+
+---
+
+## 验证要求
+完成后请至少做这些检查：
+
+1. `python -m py_compile` 通过
+2. 用现有样例数据跑一次裁剪 smoke test
+3. 确认输出目录里有：
+   - `data.yaml`
+   - `train/images`
+   - `train/labels`
+   - `val/images`
+   - `val/labels`
+   - `crop_summary.json`
+
+---
+
+## 额外说明
+- 裁剪时宁可稍微大一点，也不要严格贴框
+- 不要把“裁剪”和“训练”混在一个脚本里
+- 我希望最后结构清楚、职责单一、后面好维护
 
 在训练前，建议先把完整图像裁剪成只包含油表框的小图，这样：
 
@@ -132,6 +259,11 @@ dataset_convert/
 python call_entrance_pose/crop_yolo_fuel_pose_dataset.py \
   --data call_entrance_pose/dataset_convert/data.yaml \
   --output-dir call_entrance_pose/dataset_convert_crop \
+  --crop-padding 0.05
+
+python call_entrance_pose/crop_yolo_fuel_pose_dataset.py \
+  --data /home/wang/datasets/yolopose_dataset_convert/data.yaml \
+  --output-dir /home/wang/datasets/yolopose_dataset_convert_crop \
   --crop-padding 0.05
 ```
 
@@ -199,6 +331,14 @@ python call_entrance_pose/train_yolo_fuel_pose_crop.py \
   --epochs 300 \
   --batch 16 \
   --device 0
+
+远程云坏境的地址
+python call_entrance_pose/train_yolo_fuel_pose_crop.py \
+  --data /home/wang/datasets/yolopose_dataset_convert_crop/data.yaml \
+  --model yolo11m-pose.pt \
+  --epochs 300 \
+  --batch 16 \
+  --device 0
 ```
 
 ### 参数说明
@@ -228,20 +368,88 @@ runs/fuel_pose/pose_crop_4kpt/
 
 ## 步骤 4：预测油量比例
 
-训练完成后，使用 `predict_pose_fuel.py` 进行推理：
+### 方式 1：单阶段预测（直接在裁剪图上）
+
+如果你的图片已经是裁剪好的油表图，使用 `predict_pose_fuel.py`：
 
 ```bash
 python call_entrance_pose/predict_pose_fuel.py \
   --model runs/fuel_pose/pose_crop_4kpt/weights/best.pt \
-  --source /path/to/images \
+  --source /path/to/cropped_images \
   --direction max_full_span \
   --save-vis
 ```
 
-### 参数说明
+### 方式 2：二阶段预测（检测 + 姿态估计）★ 推荐
 
-- `--model`: 训练好的模型路径
-- `--source`: 输入图片目录或单张图片
+**适用场景**：原图包含完整场景，需要先检测油表位置再预测关键点。
+
+**流程**：
+1. **第一阶段**：YOLO 检测模型找到原图中的油表框
+   - `class_id == 0`：指针式油表，继续第二阶段
+   - `class_id == 1`：格子式油表，返回 `grid_not_ready`（格子识别暂未实现）
+   - 其他类别：返回 `unsupported_cls`
+2. **裁剪扩展**：将检测框四周扩大一点（默认 8%），防止裁掉指针或刻度
+3. **第二阶段**：YOLO Pose 模型在裁剪小图上预测 4 个关键点（仅针对指针式）
+4. **计算油量**：根据关键点角度计算油量比例
+
+```bash
+python call_entrance_pose/predict_pose_fuel_two_stage.py \
+  --det-model runs/detect/oil_detector/weights/best.pt \
+  --pose-model runs/fuel_pose/pose_crop_4kpt/weights/best.pt \
+  --source /path/to/original_images \
+  --box-padding 0.08 \
+  --direction max_full_span \
+  --save-vis \
+  --crop-dir call_entrance_pose/crops
+```
+
+#### 二阶段预测参数说明
+
+- `--det-model`: 第一阶段 YOLO 检测模型路径（用于找油表框）
+- `--pose-model`: 第二阶段 YOLO Pose 模型路径（用于预测关键点）
+- `--source`: 输入图片目录或单张图片（原图）
+- `--box-padding`: 裁剪时在检测框四周的扩展比例（默认 0.08 = 8%）
+  - 建议值：0.05 ~ 0.1，防止边缘关键点被裁掉
+- `--det-conf`: 检测置信度阈值（默认 0.25）
+- `--pose-conf`: 姿态置信度阈值（默认 0.25）
+- `--direction`: 角度计算方向（默认 `max_full_span`）
+- `--save-vis`: 保存可视化结果（绘制在裁剪小图上）
+- `--vis-dir`: 可视化结果输出目录
+- `--crop-dir`: 可选，保存裁剪后的小图
+- `--output-csv`: 输出 CSV 文件路径
+
+#### 二阶段预测输出
+
+CSV 文件包含以下字段：
+
+```text
+image,status,det_class,fuel_type,det_conf,det_x1,det_y1,det_x2,det_y2,crop_image,pose_conf,
+fuel_ratio,raw_fuel_ratio,fuel_percent,clamped,direction,span_deg,offset_deg,
+tip_deg,empty_deg,full_deg,center_x,center_y,tip_x,tip_y,empty_x,empty_y,full_x,full_y
+```
+
+**字段说明**：
+- `det_class`: 第一阶段检测到的类别 ID（0=指针, 1=格子, 其他）
+- `fuel_type`: 油表类型（`pointer` / `grid` / `class_{id}`）
+
+**状态说明**：
+- `ok`: 成功预测（仅指针式油表）
+- `no_det`: 第一阶段未检测到油表框
+- `grid_not_ready`: 检测到格子式油表，但格子识别暂未实现
+- `unsupported_cls`: 检测到不支持的类别
+- `invalid_crop`: 裁剪区域无效
+- `no_pose`: 第二阶段未检测到关键点
+- `read_error`: 图片读取失败
+
+**注意**：
+- 只有 `class_id == 0`（指针式油表）会继续执行 Pose 预测和角度计算
+- 输出的关键点坐标（`center_x`, `tip_x` 等）是在**裁剪小图**坐标系下的，不是原图坐标
+
+### 单阶段预测参数说明
+
+- `--model`: 训练好的 YOLO Pose 模型路径
+- `--source`: 输入图片目录或单张图片（已裁剪的油表图）
 - `--direction`: 角度计算方向（见下文）
 - `--save-vis`: 保存可视化结果
 - `--vis-dir`: 可视化结果输出目录
