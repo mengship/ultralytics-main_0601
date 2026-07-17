@@ -1,0 +1,18 @@
+{
+  "missing_image": [
+    "260630_CCP1767"
+  ],
+  "missing_json": [],
+  "missing_size": [],
+  "missing_box": [
+    {
+      "image": "260629_NHF4024",
+      "fuel_type": "格子"
+    },
+    {
+      "image": "260629_NIO8860",
+      "fuel_type": "格子"
+    }
+  ],
+  "fuel_type_unknown": []
+}

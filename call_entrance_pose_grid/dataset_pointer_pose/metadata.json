@@ -1,0 +1,23 @@
+{
+  "total_samples": 11,
+  "train_samples": 7,
+  "val_samples": 4,
+  "keypoint_order": [
+    "center",
+    "tip",
+    "empty",
+    "full"
+  ],
+  "kpt_shape": [
+    4,
+    2
+  ],
+  "position_distribution": {
+    "lower_right": 4,
+    "top_right": 3,
+    "lower_left": 2,
+    "left": 2
+  },
+  "val_ratio": 0.2,
+  "seed": 42
+}

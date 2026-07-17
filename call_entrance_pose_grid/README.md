@@ -1,6 +1,176 @@
 # 格子油表 Pose 版本需求说明
 
-这个目录用于处理格子类型油表的数据。当前样例数据在：
+这个目录用于处理格子类型油表的数据。
+
+## 数据处理脚本（新增）
+
+### 一键生成三种数据集
+
+从 LabelMe/X-AnyLabeling 标注生成 YOLO 数据集，支持：
+1. YOLO 检测数据集（识别指针/格子油表）
+2. 格子油表 YOLO Pose 数据集
+3. 指针油表 YOLO Pose 数据集
+
+**数据来源：**
+```bash
+/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/test
+```
+
+#### 脚本 1：YOLO 检测数据集
+
+生成用于识别指针和格子油表的检测数据集。
+
+```bash
+# 默认设置
+python call_entrance_pose_grid/prepare_yolo_detect_dataset.py
+
+# 自定义参数
+python call_entrance_pose_grid/prepare_yolo_detect_dataset.py \
+    --source-dir /path/to/source \
+    --output-dir call_entrance_pose_grid/dataset_detect \
+    --val-ratio 0.2 \
+    --seed 42
+
+python call_entrance_pose_grid/prepare_yolo_detect_dataset.py \
+    --source-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/test" \
+    --output-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/dataset_detect" \
+    --val-ratio 0.2 \
+    --seed 42
+```
+
+**类别映射：**
+- `0: pointer` (指针油表)
+- `1: grid` (格子油表)
+
+**处理规则：**
+- 指针样本：提取 `oil` 框
+- 格子样本：提取 `oil1` 框
+- 支持 `rectangle` 和 `rotation` 标注
+- 按油表类型分层做 8:2 切分
+
+**输出结构：**
+```
+dataset_detect/
+├── data.yaml
+├── metadata.json
+├── missing_report.json
+├── train/
+│   ├── images/
+│   └── labels/
+└── val/
+    ├── images/
+    └── labels/
+```
+
+#### 脚本 2：格子油表 YOLO Pose 数据集
+
+生成格子油表的关键点检测数据集。
+
+```bash
+# 默认设置
+python call_entrance_pose_grid/prepare_grid_pose_dataset.py
+
+# 自定义参数
+python call_entrance_pose_grid/prepare_grid_pose_dataset.py \
+    --source-dir /path/to/source \
+    --output-dir call_entrance_pose_grid/dataset_grid_pose \
+    --val-ratio 0.2 \
+    --seed 42
+
+python call_entrance_pose_grid/prepare_grid_pose_dataset.py \
+    --source-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/test" \
+    --output-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/dataset_grid_pose" \
+    --val-ratio 0.2 \
+    --seed 42
+```
+
+**关键点顺序：**
+```
+0: empty
+1: full
+2: tip
+```
+
+**标签格式：**
+```
+class cx cy w h empty_x empty_y full_x full_y tip_x tip_y
+```
+
+**data.yaml：**
+```yaml
+path: <绝对路径>
+train: train/images
+val: val/images
+kpt_shape: [3, 2]
+flip_idx: [0, 1, 2]
+names:
+  0: grid_pose
+```
+
+#### 脚本 3：指针油表 YOLO Pose 数据集
+
+生成指针油表的关键点检测数据集。
+
+```bash
+# 默认设置
+python call_entrance_pose_grid/prepare_pointer_pose_dataset.py
+
+# 自定义参数
+python call_entrance_pose_grid/prepare_pointer_pose_dataset.py \
+    --source-dir /path/to/source \
+    --output-dir call_entrance_pose_grid/dataset_pointer_pose \
+    --val-ratio 0.2 \
+    --seed 42
+
+python call_entrance_pose_grid/prepare_pointer_pose_dataset.py \
+    --source-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/test" \
+    --output-dir "/Users/flash/Documents/Data_Work/99_临时中转站/9 潘杰/数据标记/dataset_pointer_pose" \
+    --val-ratio 0.2 \
+    --seed 42
+```
+
+**关键点顺序：**
+```
+0: center
+1: tip
+2: empty
+3: full
+```
+
+**标签格式：**
+```
+class cx cy w h center_x center_y tip_x tip_y empty_x empty_y full_x full_y
+```
+
+**切分策略：**
+- 按 `油表位置` 分层切分（lower_right / top_right / left / lower_left）
+- 每种位置尽量分布到 train/val
+
+**data.yaml：**
+```yaml
+path: <绝对路径>
+train: train/images
+val: val/images
+kpt_shape: [4, 2]
+flip_idx: [0, 1, 2, 3]
+names:
+  0: pointer_pose
+```
+
+**异常报告：**
+
+所有脚本都会生成 `missing_report.json`，记录：
+- 缺失图片
+- 缺失 JSON
+- 缺失目标框
+- 缺失关键点
+- 油表类型不匹配
+
+---
+
+## 原始数据说明
+
+当前样例数据在：
 
 ```text
 call_entrance_pose_grid/datasets/
@@ -362,6 +532,7 @@ python call_entrance_pose_grid/predict_fuel_two_stage.py \
     --vis-dir call_entrance_pose_grid/fuel_vis_two_stage \
     --crop-dir call_entrance_pose_grid/fuel_crops \
     --device 0
+    
 ```
 
 **流程说明：**

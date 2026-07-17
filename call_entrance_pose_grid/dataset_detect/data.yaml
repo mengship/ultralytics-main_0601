@@ -1,0 +1,7 @@
+path: /Users/flash/Documents/Data_Work/07_学习积累/果壳/projectcode/ultralytics-main_0601/call_entrance_pose_grid/dataset_detect
+train: train/images
+val: val/images
+
+names:
+  0: pointer
+  1: grid

@@ -1,0 +1,16 @@
+{
+  "total_samples": 22,
+  "train_samples": 17,
+  "val_samples": 5,
+  "keypoint_order": [
+    "empty",
+    "full",
+    "tip"
+  ],
+  "kpt_shape": [
+    3,
+    2
+  ],
+  "val_ratio": 0.2,
+  "seed": 42
+}
