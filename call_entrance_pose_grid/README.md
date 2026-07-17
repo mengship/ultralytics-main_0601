@@ -338,15 +338,66 @@ python call_entrance_pose_grid/train_yolo_grid_pose.py \
 
 ### 6. 接入二阶段总预测
 
-- [ ] 在二阶段检测中保留类别分流
-- [ ] `class_id == 0` 走指针 Pose 逻辑
-- [ ] `class_id == 1` 走格子 Pose 逻辑
-- [ ] 格子逻辑没完成前保持 `grid_not_ready`
-- [ ] 完成后将 `grid_not_ready` 替换为真实格子预测结果
+- [x] 在二阶段检测中保留类别分流
+- [x] `class_id == 0` 走指针 Pose 逻辑
+- [x] `class_id == 1` 走格子 Pose 逻辑
+- [x] 格子逻辑已完成，使用距离比例计算
+- [x] 创建统一二阶段预测脚本 `predict_fuel_two_stage.py`
+
+**统一二阶段预测命令：**
+
+```bash
+# 同时识别指针和格子油表
+python call_entrance_pose_grid/predict_fuel_two_stage.py \
+    --det-model runs/detect/fuel_gauge_detector/weights/best.pt \
+    --pointer-pose-model runs/pose/pointer_pose/weights/best.pt \
+    --grid-pose-model runs/pose/grid_pose/weights/best.pt \
+    --source test_images/ \
+    --det-conf 0.25 \
+    --pose-conf 0.25 \
+    --box-padding 0.08 \
+    --direction max_full_span \
+    --output-csv call_entrance_pose_grid/fuel_two_stage_predictions.csv \
+    --save-vis \
+    --vis-dir call_entrance_pose_grid/fuel_vis_two_stage \
+    --crop-dir call_entrance_pose_grid/fuel_crops \
+    --device 0
+```
+
+**流程说明：**
+
+1. **第一阶段**：使用 YOLO 检测模型识别原图中的油表框和类别
+2. **类别路由**：
+   - `class_id == 0`：指针油表 → 使用 pointer pose 模型 → 角度计算
+   - `class_id == 1`：格子油表 → 使用 grid pose 模型 → 距离计算
+   - 其他类别：返回 `unsupported_cls`
+3. **检测框扩大**：按 `--box-padding` 比例扩大检测框再裁剪，防止裁掉关键区域
+4. **第二阶段**：在裁剪小图上运行对应的 Pose 模型预测关键点
+5. **油量计算**：
+   - 指针：`fuel_ratio = (empty→tip 角度) / (empty→full 角度)`
+   - 格子：`fuel_ratio = distance(empty, tip) / distance(empty, full)`
+6. **可视化**：只在裁剪小图上绘制，不映射回原图
+
+**CSV 输出字段：**
+
+- 通用字段：`image, status, fuel_type, det_class, det_conf, det_x1~y2, crop_image, pose_conf, fuel_ratio, raw_fuel_ratio, fuel_percent, clamped`
+- 指针专用：`direction, span_deg, offset_deg, center_x, center_y`
+- 格子专用：`total_distance, current_distance`
+- 关键点：`empty_x, empty_y, full_x, full_y, tip_x, tip_y`（裁剪小图坐标）
+
+**状态码：**
+
+- `ok`：成功预测
+- `read_error`：图片读取失败
+- `no_det`：第一阶段未检测到油表
+- `invalid_crop`：裁剪区域无效
+- `no_pose`：第二阶段未检测到关键点
+- `unsupported_cls`：不支持的类别
+- `invalid_grid_distance`：格子油表距离无效
 
 ### 7. 最终验证
 
-- [ ] `python -m py_compile` 检查所有新增脚本
+- [x] `python -m py_compile` 检查所有新增脚本
 - [ ] 用样例 JSON 完成从转换到训练前数据集的完整流程
 - [ ] 检查 train / val 比例是否接近 8:2
 - [ ] 检查裁剪图是否保留完整格子油表

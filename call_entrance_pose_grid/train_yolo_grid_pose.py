@@ -15,6 +15,13 @@ Keypoint order:
     1 full
     2 tip
 
+python call_entrance_pose_grid/train_yolo_grid_pose.py \
+    --data call_entrance_pose_grid/dataset_convert_crop/data.yaml \
+    --model yolo11m-pose.pt \
+    --epochs 300 \
+    --batch 16 \
+    --device 0
+
 Label format (YOLO Pose):
     class cx cy w h empty_x empty_y full_x full_y tip_x tip_y
 
