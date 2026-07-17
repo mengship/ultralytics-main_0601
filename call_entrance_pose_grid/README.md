@@ -457,7 +457,45 @@ python call_entrance_pose_grid/crop_yolo_grid_pose_dataset.py \
 - Val: 1/1 样本成功裁剪
 - 成功率：100%
 
-### 4. 训练格子油表 Pose 模型
+### 4. 训练第一阶段检测模型（指针 + 格子识别）
+
+- [x] 新建训练脚本 `train_yolo_gauge_detect.py`
+- [x] 训练普通 YOLO detection 模型（不是 pose 模型）
+- [ ] 检查训练日志和验证集效果
+- [ ] 保存最优权重路径
+
+**训练命令：**
+
+```bash
+# 默认设置
+python call_entrance_pose_grid/train_yolo_gauge_detect.py
+
+# 自定义参数
+python call_entrance_pose_grid/train_yolo_gauge_detect.py \
+    --data call_entrance_pose_grid/dataset_detect/data.yaml \
+    --model yolo11m.pt \
+    --epochs 300 \
+    --batch 16 \
+    --device 0
+```
+
+**训练配置：**
+- 模型：`yolo11m.pt`（注意：不是 `yolo11m-pose.pt`）
+- 类别：
+  - 0: pointer (指针油表)
+  - 1: grid (格子油表)
+- 增强策略：
+  - ✓ 轻微增强（mosaic=0.2, translate=0.08, scale=0.25）
+  - ✓ 颜色增强（hsv_h/s/v）
+  - ✗ 禁用翻转（方向敏感）
+- 优化器：AdamW
+- 默认输出：`runs/gauge_detect/detect_pointer_grid/`
+
+**用途：**
+- 第一阶段：识别油表框和类别
+- 为第二阶段 Pose 模型提供裁剪区域
+
+### 5. 训练格子油表 Pose 模型
 
 - [x] 新建训练脚本，例如 `train_yolo_grid_pose.py`
 - [x] 默认读取 `dataset_convert_crop/data.yaml`
