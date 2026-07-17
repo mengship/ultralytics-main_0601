@@ -450,6 +450,7 @@ def process_image(
         conf=args.det_conf,
         imgsz=args.imgsz,
         verbose=False,
+        device=args.device,
     )
 
     if not det_results or len(det_results) == 0:
@@ -523,6 +524,7 @@ def process_image(
         conf=args.pose_conf,
         imgsz=args.imgsz,
         verbose=False,
+        device=args.device,
     )
 
     if not pose_results or len(pose_results) == 0:
@@ -696,11 +698,6 @@ def main() -> None:
     det_model = YOLO(args.det_model)
     pointer_pose_model = YOLO(args.pointer_pose_model)
     grid_pose_model = YOLO(args.grid_pose_model)
-
-    if args.device:
-        det_model.to(args.device)
-        pointer_pose_model.to(args.device)
-        grid_pose_model.to(args.device)
 
     print("模型加载完成。")
     print()
