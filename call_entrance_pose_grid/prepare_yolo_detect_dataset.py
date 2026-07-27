@@ -80,15 +80,25 @@ def rectangle_to_bbox(points: List[List[float]]) -> Tuple[float, float, float, f
     """将 rectangle 标注转换为 bbox
 
     Args:
-        points: 2 个对角点坐标 [[x1, y1], [x2, y2]]
+        points: 2 个对角点坐标 [[x1, y1], [x2, y2]] 或 4 个角点坐标
 
     Returns:
         (x1, y1, x2, y2)
     """
-    x1 = min(points[0][0], points[1][0])
-    y1 = min(points[0][1], points[1][1])
-    x2 = max(points[0][0], points[1][0])
-    y2 = max(points[0][1], points[1][1])
+    if len(points) == 2:
+        # 2 个对角点
+        x1 = min(points[0][0], points[1][0])
+        y1 = min(points[0][1], points[1][1])
+        x2 = max(points[0][0], points[1][0])
+        y2 = max(points[0][1], points[1][1])
+    else:
+        # 4 个角点，取外接框
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        x1 = min(xs)
+        y1 = min(ys)
+        x2 = max(xs)
+        y2 = max(ys)
 
     return x1, y1, x2, y2
 
