@@ -257,6 +257,10 @@ def process_dataset(
         raise FileNotFoundError(f"未找到 readme.xlsx: {readme_path}")
 
     df = pd.read_excel(readme_path, sheet_name="Sheet1")
+
+    # 将"图片名称"列转换为字符串类型（避免纯数字被读取为 int）
+    df['图片名称'] = df['图片名称'].astype(str)
+
     print(f"读取到 {len(df)} 条记录")
 
     # 创建输出目录
