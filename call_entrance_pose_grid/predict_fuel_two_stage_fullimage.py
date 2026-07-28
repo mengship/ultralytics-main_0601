@@ -81,13 +81,17 @@ def extract_points_with_conf(result, index: int) -> Tuple[Dict[str, Tuple[float,
     }
 
     # 提取置信度
-    confs = result.keypoints.conf[index].detach().cpu().numpy() if result.keypoints.conf is not None else None
     confidences = {}
-    if confs is not None and len(confs) >= len(POINTER_KEYPOINT_ORDER):
-        confidences = {
-            name: float(confs[i])
-            for i, name in enumerate(POINTER_KEYPOINT_ORDER)
-        }
+    if result.keypoints.conf is not None:
+        confs = result.keypoints.conf[index].detach().cpu().numpy()
+        if len(confs) >= len(POINTER_KEYPOINT_ORDER):
+            confidences = {
+                name: float(confs[i])
+                for i, name in enumerate(POINTER_KEYPOINT_ORDER)
+            }
+    else:
+        # keypoints.conf 不存在，使用默认值
+        print(f"警告: keypoints.conf 为 None，无法获取置信度")
 
     return points, confidences
 
@@ -193,13 +197,17 @@ def extract_grid_points(result, index: int) -> Tuple[Dict[str, Tuple[float, floa
     }
 
     # 提取置信度
-    confs = result.keypoints.conf[index].detach().cpu().numpy() if result.keypoints.conf is not None else None
     confidences = {}
-    if confs is not None and len(confs) >= len(GRID_KEYPOINT_ORDER):
-        confidences = {
-            name: float(confs[i])
-            for i, name in enumerate(GRID_KEYPOINT_ORDER)
-        }
+    if result.keypoints.conf is not None:
+        confs = result.keypoints.conf[index].detach().cpu().numpy()
+        if len(confs) >= len(GRID_KEYPOINT_ORDER):
+            confidences = {
+                name: float(confs[i])
+                for i, name in enumerate(GRID_KEYPOINT_ORDER)
+            }
+    else:
+        # keypoints.conf 不存在，使用默认值
+        print(f"警告: keypoints.conf 为 None，无法获取置信度")
 
     return points, confidences
 
