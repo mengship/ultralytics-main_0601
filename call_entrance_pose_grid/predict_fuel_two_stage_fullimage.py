@@ -239,11 +239,11 @@ def draw_grid_prediction_on_image(
     current_dist = float(metrics["current_distance"])
 
     label = f"GRID fuel={ratio * 100:.1f}% raw={raw_ratio * 100:.1f}%"
-    put_label_with_outline(vis_img, label, (x1, y1 - 40), (0, 255, 255), scale=0.8, thickness=2)
+    put_label_with_outline(vis_img, label, (x1, y1 - 40), (0, 255, 255), scale=0.8)
 
     # 添加距离信息
     dist_label = f"dist: {current_dist:.1f} / {total_dist:.1f}"
-    put_label_with_outline(vis_img, dist_label, (x1, y1 - 10), (255, 255, 0), scale=0.6, thickness=2)
+    put_label_with_outline(vis_img, dist_label, (x1, y1 - 10), (255, 255, 0), scale=0.6)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), vis_img)
@@ -333,7 +333,7 @@ def draw_pointer_prediction_on_image(
 
     # 添加燃料比例标签
     label = f"POINTER fuel={ratio * 100:.1f}% raw={raw_ratio * 100:.1f}% {direction}"
-    put_label_with_outline(vis_img, label, (x1, y1 - 10), (0, 255, 255), scale=0.8, thickness=2)
+    put_label_with_outline(vis_img, label, (x1, y1 - 10), (0, 255, 255), scale=0.8)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), vis_img)
