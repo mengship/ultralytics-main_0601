@@ -52,6 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project", default="runs/fuel_pose")
     parser.add_argument("--name", default="pose_crop_4kpt")
     parser.add_argument("--exist-ok", action="store_true")
+    parser.add_argument("--degrees", type=float, default=15.0, help="Rotation augmentation range (+/- deg)")
     return parser.parse_args()
 
 
@@ -81,6 +82,7 @@ def main() -> None:
     print(f"Image size: {args.imgsz}")
     print(f"Batch size: {args.batch}")
     print(f"Device: {args.device}")
+    print(f"Rotation: ±{args.degrees}°")
     print(f"Project: {args.project}")
     print(f"Name: {args.name}")
     print("=" * 60)
@@ -105,7 +107,7 @@ def main() -> None:
         warmup_epochs=3,
         mosaic=0.2,
         close_mosaic=20,
-        degrees=15.0,
+        degrees=args.degrees,
         translate=0.08,
         scale=0.25,
         perspective=0.0003,

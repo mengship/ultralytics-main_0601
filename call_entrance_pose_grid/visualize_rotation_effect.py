@@ -39,14 +39,55 @@ def rotate_image_keep_size(image, angle):
     return rotated
 
 
-def rotate_keypoints(keypoints, angle, image_width, image_height):
+def rotate_image_expand_canvas(image, angle):
+    """旋转图像并扩大画布以容纳完整内容（无裁剪）
+
+    Args:
+        image: 输入图像
+        angle: 旋转角度（正值为逆时针）
+
+    Returns:
+        旋转后的图像（尺寸扩大），新的宽高
+    """
+    h, w = image.shape[:2]
+    center = (w // 2, h // 2)
+
+    # 获取旋转矩阵
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    # 计算旋转后的边界框尺寸
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+
+    # 调整旋转矩阵的平移部分
+    M[0, 2] += (new_w / 2) - center[0]
+    M[1, 2] += (new_h / 2) - center[1]
+
+    # 旋转并用灰色填充
+    rotated = cv2.warpAffine(
+        image,
+        M,
+        (new_w, new_h),
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(114, 114, 114)
+    )
+
+    return rotated, new_w, new_h
+
+
+def rotate_keypoints(keypoints, angle, image_width, image_height, new_width=None, new_height=None):
     """旋转关键点坐标
 
     Args:
         keypoints: [(x, y), ...] 关键点坐标列表
         angle: 旋转角度（正值为逆时针）
-        image_width: 图像宽度
-        image_height: 图像高度
+        image_width: 原始图像宽度
+        image_height: 原始图像高度
+        new_width: 旋转后的新宽度（扩大画布模式）
+        new_height: 旋转后的新高度（扩大画布模式）
 
     Returns:
         旋转后的关键点坐标
@@ -68,9 +109,14 @@ def rotate_keypoints(keypoints, angle, image_width, image_height):
         x_rot = x_shifted * cos_a - y_shifted * sin_a
         y_rot = x_shifted * sin_a + y_shifted * cos_a
 
-        # 平移回去
-        x_new = x_rot + center_x
-        y_new = y_rot + center_y
+        # 如果画布扩大了，需要调整中心点
+        if new_width is not None and new_height is not None:
+            x_new = x_rot + new_width / 2
+            y_new = y_rot + new_height / 2
+        else:
+            # 平移回去（原始尺寸）
+            x_new = x_rot + center_x
+            y_new = y_rot + center_y
 
         rotated_kpts.append((x_new, y_new))
 
@@ -111,12 +157,13 @@ def draw_keypoints(image, keypoints, labels, color=(0, 255, 0)):
     return result
 
 
-def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15]):
+def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15], expand_canvas=False):
     """可视化不同旋转角度的效果
 
     Args:
         image_path: 输入图像路径
         angles: 要测试的旋转角度列表
+        expand_canvas: 是否扩大画布以保留完整内容（True=无裁剪，False=保持原尺寸）
     """
     # 读取图像
     image = cv2.imread(str(image_path))
@@ -125,6 +172,7 @@ def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15]):
 
     h, w = image.shape[:2]
     print(f"图像尺寸: {w}x{h}")
+    print(f"旋转模式: {'扩大画布（无裁剪）' if expand_canvas else '保持尺寸（会裁剪）'}")
 
     # 模拟关键点（假设在图像中心附近）
     # 格子油表：empty, full, tip
@@ -144,17 +192,25 @@ def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15]):
     for angle in angles:
         print(f"\n旋转角度: {angle}°")
 
-        # 旋转图像
-        rotated_img = rotate_image_keep_size(image, angle)
-
-        # 旋转关键点
-        rotated_kpts = rotate_keypoints(keypoints, angle, w, h)
+        if expand_canvas:
+            # 旋转图像（扩大画布）
+            rotated_img, new_w, new_h = rotate_image_expand_canvas(image, angle)
+            # 旋转关键点
+            rotated_kpts = rotate_keypoints(keypoints, angle, w, h, new_w, new_h)
+            print(f"  新尺寸: {new_w}x{new_h}")
+        else:
+            # 旋转图像（保持尺寸）
+            rotated_img = rotate_image_keep_size(image, angle)
+            # 旋转关键点
+            rotated_kpts = rotate_keypoints(keypoints, angle, w, h)
+            new_w, new_h = w, h
 
         # 绘制关键点
         vis_img = draw_keypoints(rotated_img, rotated_kpts, labels)
 
         # 添加标题
-        title = f"Rotation: {angle} degrees"
+        mode_text = "Expand Canvas" if expand_canvas else "Keep Size"
+        title = f"Rotation: {angle}deg ({mode_text})"
         cv2.putText(
             vis_img,
             title,
@@ -187,7 +243,7 @@ def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15]):
         # 检查关键点是否超出边界
         out_of_bounds = []
         for (x, y), label in zip(rotated_kpts, labels):
-            if x < 0 or x >= w or y < 0 or y >= h:
+            if x < 0 or x >= new_w or y < 0 or y >= new_h:
                 out_of_bounds.append(label)
 
         if out_of_bounds:
@@ -196,26 +252,41 @@ def visualize_rotation_effect(image_path, angles=[0, 5, 10, 15]):
             print(f"  ✓ 所有关键点在图像内")
 
         # 保存结果
-        output_path = output_dir / f"rotation_{angle}deg.jpg"
+        mode_suffix = "_expand" if expand_canvas else "_crop"
+        output_path = output_dir / f"rotation_{angle}deg{mode_suffix}.jpg"
         cv2.imwrite(str(output_path), vis_img)
         print(f"  已保存: {output_path}")
 
         results.append(vis_img)
 
-    # 创建对比图
-    if len(results) <= 4:
-        # 2x2 拼接
-        row1 = np.hstack(results[:2]) if len(results) >= 2 else results[0]
-        row2 = np.hstack(results[2:4]) if len(results) >= 4 else (results[2] if len(results) >= 3 else results[0])
-        comparison = np.vstack([row1, row2])
-    else:
-        # 单列拼接
-        comparison = np.vstack(results)
+    # 创建对比图（需要统一尺寸）
+    if not expand_canvas and len(results) <= 4:
+        # 保持尺寸模式：可以直接拼接
+        if len(results) >= 2:
+            row1 = np.hstack(results[:2])
+        else:
+            row1 = results[0]
 
-    comparison_path = output_dir / "comparison.jpg"
-    cv2.imwrite(str(comparison_path), comparison)
-    print(f"\n对比图已保存: {comparison_path}")
+        if len(results) >= 4:
+            row2 = np.hstack(results[2:4])
+            comparison = np.vstack([row1, row2])
+        elif len(results) >= 3:
+            row2 = results[2]
+            # 补齐宽度
+            if row2.shape[1] < row1.shape[1]:
+                pad_width = row1.shape[1] - row2.shape[1]
+                row2 = np.hstack([row2, np.zeros((row2.shape[0], pad_width, 3), dtype=np.uint8)])
+            comparison = np.vstack([row1, row2])
+        else:
+            comparison = row1
+
+        mode_suffix = "_expand" if expand_canvas else "_crop"
+        comparison_path = output_dir / f"comparison{mode_suffix}.jpg"
+        cv2.imwrite(str(comparison_path), comparison)
+        print(f"\n对比图已保存: {comparison_path}")
+
     print(f"\n所有结果保存在: {output_dir.absolute()}")
+
 
 
 def main():
@@ -232,6 +303,11 @@ def main():
         default=[0, 5, 10, 15],
         help="要测试的旋转角度列表",
     )
+    parser.add_argument(
+        "--expand-canvas",
+        action="store_true",
+        help="扩大画布以保留完整内容（无裁剪）",
+    )
 
     args = parser.parse_args()
 
@@ -243,7 +319,7 @@ def main():
     print("=" * 70)
     print()
 
-    visualize_rotation_effect(args.image, args.angles)
+    visualize_rotation_effect(args.image, args.angles, args.expand_canvas)
 
 
 if __name__ == "__main__":
