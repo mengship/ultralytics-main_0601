@@ -33,8 +33,24 @@ def main():
 
     result = results[0]
 
-    print(f"✅ 检测到 {len(result.boxes)} 个目标")
+    print(f"检测到 {len(result.boxes)} 个目标")
     print()
+
+    if len(result.boxes) == 0:
+        print("⚠️  没有检测到目标，请检查：")
+        print("   1. 图像中是否有油表")
+        print("   2. 模型是否适用于该图像")
+        print("   3. 置信度阈值是否过高")
+        print()
+        print("尝试使用较低的置信度重新预测...")
+        results = model.predict(args.image, conf=0.01, verbose=False)
+        if results and len(results) > 0 and len(results[0].boxes) > 0:
+            result = results[0]
+            print(f"✅ 使用 conf=0.01 检测到 {len(result.boxes)} 个目标")
+            print()
+        else:
+            print("❌ 仍然没有检测到目标")
+            return
 
     # 检查 keypoints 结构
     if result.keypoints is None:
