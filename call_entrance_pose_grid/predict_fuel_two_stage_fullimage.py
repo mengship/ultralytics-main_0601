@@ -47,7 +47,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "call_entrance_pose"))
 from predict_pose_fuel import (
     compute_fuel_ratio,
     best_detection_index,
-    extract_points,
     angle_of,
     angle_in_direction,
     wrap_positive,
@@ -58,6 +57,39 @@ from predict_pose_fuel import (
 
 POINTER_KEYPOINT_ORDER = ("center", "tip", "empty", "full")
 GRID_KEYPOINT_ORDER = ("empty", "full", "tip")
+
+
+def extract_points_with_conf(result, index: int) -> Tuple[Dict[str, Tuple[float, float]], Dict[str, float]]:
+    """从 Pointer Pose 结果中提取关键点和置信度
+
+    Pointer 关键点顺序: 0.center, 1.tip, 2.empty, 3.full
+
+    Returns:
+        (points, confidences): 关键点坐标字典和置信度字典
+    """
+    if result.keypoints is None or result.keypoints.xy is None:
+        raise ValueError("No keypoints in result")
+
+    keypoints = result.keypoints.xy[index].detach().cpu().numpy()
+    if keypoints.shape[0] < len(POINTER_KEYPOINT_ORDER):
+        raise ValueError(f"Expected {len(POINTER_KEYPOINT_ORDER)} keypoints, got {keypoints.shape[0]}")
+
+    # 提取坐标
+    points = {
+        name: (float(keypoints[i][0]), float(keypoints[i][1]))
+        for i, name in enumerate(POINTER_KEYPOINT_ORDER)
+    }
+
+    # 提取置信度
+    confs = result.keypoints.conf[index].detach().cpu().numpy() if result.keypoints.conf is not None else None
+    confidences = {}
+    if confs is not None and len(confs) >= len(POINTER_KEYPOINT_ORDER):
+        confidences = {
+            name: float(confs[i])
+            for i, name in enumerate(POINTER_KEYPOINT_ORDER)
+        }
+
+    return points, confidences
 
 
 def parse_args() -> argparse.Namespace:
@@ -128,15 +160,24 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="推理设备（如 '0', 'cpu', 'mps'）",
     )
+    parser.add_argument(
+        "--min-keypoint-conf",
+        type=float,
+        default=0.6,
+        help="最小关键点置信度阈值（所有关键点必须 >= 此值）",
+    )
     return parser.parse_args()
 
 
 # ========== Grid 相关函数 ==========
 
-def extract_grid_points(result, index: int) -> Dict[str, Tuple[float, float]]:
-    """从 Grid Pose 结果中提取关键点
+def extract_grid_points(result, index: int) -> Tuple[Dict[str, Tuple[float, float]], Dict[str, float]]:
+    """从 Grid Pose 结果中提取关键点和置信度
 
     Grid 关键点顺序: 0.empty, 1.full, 2.tip
+
+    Returns:
+        (points, confidences): 关键点坐标字典和置信度字典
     """
     if result.keypoints is None or result.keypoints.xy is None:
         raise ValueError("No keypoints in result")
@@ -145,10 +186,22 @@ def extract_grid_points(result, index: int) -> Dict[str, Tuple[float, float]]:
     if keypoints.shape[0] < len(GRID_KEYPOINT_ORDER):
         raise ValueError(f"Expected {len(GRID_KEYPOINT_ORDER)} keypoints, got {keypoints.shape[0]}")
 
-    return {
+    # 提取坐标
+    points = {
         name: (float(keypoints[i][0]), float(keypoints[i][1]))
         for i, name in enumerate(GRID_KEYPOINT_ORDER)
     }
+
+    # 提取置信度
+    confs = result.keypoints.conf[index].detach().cpu().numpy() if result.keypoints.conf is not None else None
+    confidences = {}
+    if confs is not None and len(confs) >= len(GRID_KEYPOINT_ORDER):
+        confidences = {
+            name: float(confs[i])
+            for i, name in enumerate(GRID_KEYPOINT_ORDER)
+        }
+
+    return points, confidences
 
 
 def compute_grid_fuel_ratio(points: Dict[str, Tuple[float, float]]) -> Dict[str, float | str | bool]:
@@ -384,6 +437,11 @@ def process_image(
         "full_y": None,
         "tip_x": None,
         "tip_y": None,
+        "center_conf": None,
+        "tip_conf": None,
+        "empty_conf": None,
+        "full_conf": None,
+        "min_keypoint_conf": None,
     }
 
     # Stage 1: 检测
@@ -467,7 +525,33 @@ def process_image(
     try:
         if is_pointer:
             # 指针油表：使用角度计算
-            points = extract_points(pose_result, pose_idx)
+            points, confidences = extract_points_with_conf(pose_result, pose_idx)
+
+            # 填充关键点置信度
+            result["center_conf"] = confidences.get("center")
+            result["tip_conf"] = confidences.get("tip")
+            result["empty_conf"] = confidences.get("empty")
+            result["full_conf"] = confidences.get("full")
+
+            # 检查所有关键点置信度
+            if confidences:
+                min_conf = min(confidences.values())
+                result["min_keypoint_conf"] = min_conf
+
+                if min_conf < args.min_keypoint_conf:
+                    result["status"] = "low_keypoint_confidence"
+                    # 仍然填充坐标，但不计算油量
+                    result["center_x"] = float(points["center"][0])
+                    result["center_y"] = float(points["center"][1])
+                    result["empty_x"] = float(points["empty"][0])
+                    result["empty_y"] = float(points["empty"][1])
+                    result["full_x"] = float(points["full"][0])
+                    result["full_y"] = float(points["full"][1])
+                    result["tip_x"] = float(points["tip"][0])
+                    result["tip_y"] = float(points["tip"][1])
+                    return result
+
+            # 置信度检查通过，计算油量
             metrics = compute_fuel_ratio(points, direction=args.direction)
 
             # 填充指针专用字段
@@ -479,7 +563,30 @@ def process_image(
 
         else:
             # 格子油表：使用距离计算
-            points = extract_grid_points(pose_result, pose_idx)
+            points, confidences = extract_grid_points(pose_result, pose_idx)
+
+            # 填充关键点置信度（格子油表没有 center）
+            result["empty_conf"] = confidences.get("empty")
+            result["full_conf"] = confidences.get("full")
+            result["tip_conf"] = confidences.get("tip")
+
+            # 检查所有关键点置信度
+            if confidences:
+                min_conf = min(confidences.values())
+                result["min_keypoint_conf"] = min_conf
+
+                if min_conf < args.min_keypoint_conf:
+                    result["status"] = "low_keypoint_confidence"
+                    # 仍然填充坐标，但不计算油量
+                    result["empty_x"] = float(points["empty"][0])
+                    result["empty_y"] = float(points["empty"][1])
+                    result["full_x"] = float(points["full"][0])
+                    result["full_y"] = float(points["full"][1])
+                    result["tip_x"] = float(points["tip"][0])
+                    result["tip_y"] = float(points["tip"][1])
+                    return result
+
+            # 置信度检查通过，计算油量
             metrics = compute_grid_fuel_ratio(points)
 
             # 验证距离有效性
@@ -586,6 +693,11 @@ def write_csv(results: List[dict], output_csv: Path) -> None:
         "full_y",
         "tip_x",
         "tip_y",
+        "center_conf",
+        "tip_conf",
+        "empty_conf",
+        "full_conf",
+        "min_keypoint_conf",
     ]
 
     with open(output_csv, "w", encoding="utf-8", newline="") as f:
