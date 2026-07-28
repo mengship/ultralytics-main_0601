@@ -82,6 +82,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="允许覆盖已存在的项目",
     )
+    parser.add_argument(
+        "--degrees",
+        type=float,
+        default=0.0,
+        help="旋转增强范围 (+/- deg)",
+    )
     return parser.parse_args()
 
 
@@ -122,6 +128,7 @@ def main() -> None:
     print(f"图像尺寸: {args.imgsz}")
     print(f"批次大小: {args.batch}")
     print(f"训练设备: {args.device}")
+    print(f"旋转增强: ±{args.degrees}°")
     print(f"早停轮数: {args.patience}")
     print(f"项目目录: {args.project}")
     print(f"实验名称: {args.name}")
@@ -152,6 +159,7 @@ def main() -> None:
         # 数据增强配置（轻微增强）
         mosaic=0.2,
         close_mosaic=20,
+        degrees=args.degrees,
         translate=0.08,
         scale=0.25,
         hsv_h=0.015,
