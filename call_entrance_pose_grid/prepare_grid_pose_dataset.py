@@ -283,7 +283,12 @@ def process_dataset(
         tip_x, tip_y = normalize_keypoint(kpts['tip'][0], kpts['tip'][1], img_width, img_height)
 
         # 生成 YOLO Pose 标签 (class=0, 固定)
-        label = f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f} {empty_x:.6f} {empty_y:.6f} {full_x:.6f} {full_y:.6f} {tip_x:.6f} {tip_y:.6f}"
+        # 每个关键点附加可见性标志 v=2（已标注且可见，所有样本均要求三个关键点齐全）
+        label = (
+            f"0 {cx:.6f} {cy:.6f} {w:.6f} {h:.6f} "
+            f"{empty_x:.6f} {empty_y:.6f} 2 {full_x:.6f} {full_y:.6f} 2 "
+            f"{tip_x:.6f} {tip_y:.6f} 2"
+        )
 
         processed.append({
             'image_name': image_name,
@@ -331,7 +336,7 @@ def process_dataset(
         f.write(f"path: {output_dir.absolute()}\n")
         f.write(f"train: train/images\n")
         f.write(f"val: val/images\n")
-        f.write(f"kpt_shape: [3, 2]\n")
+        f.write(f"kpt_shape: [3, 3]\n")
         f.write(f"flip_idx: [0, 1, 2]\n")
         f.write(f"\nnames:\n")
         f.write(f"  0: grid_pose\n")
@@ -344,7 +349,7 @@ def process_dataset(
         'train_samples': len(train_samples),
         'val_samples': len(val_samples),
         'keypoint_order': ['empty', 'full', 'tip'],
-        'kpt_shape': [3, 2],
+        'kpt_shape': [3, 3],
         'val_ratio': val_ratio,
         'seed': seed,
     }
