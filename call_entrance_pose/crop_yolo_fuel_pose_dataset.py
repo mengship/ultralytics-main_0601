@@ -212,13 +212,16 @@ def expand_and_clip_box(
 def remap_box_to_crop(
     box_xyxy: Tuple[float, float, float, float],
     crop_xyxy: Tuple[int, int, int, int],
-) -> Tuple[float, float, float, float]:
+) -> Optional[Tuple[float, float, float, float]]:
     """把原图上的 bbox 重新映射到 crop 坐标系里，并转回 YOLO 所需的 cx/cy/w/h。
 
     步骤：
     1. 把 xyxy 从原图坐标转换到 crop 坐标
     2. 归一化到 [0, 1]
     3. 转换成 cx/cy/w/h 格式
+
+    Returns:
+        (cx, cy, w, h) 归一化坐标，如果bbox无效则返回None
     """
     x1, y1, x2, y2 = box_xyxy
     cx1, cy1, cx2, cy2 = crop_xyxy
@@ -240,6 +243,11 @@ def remap_box_to_crop(
     box_cy = clamp01((top + bottom) / 2.0)
     box_w = clamp01(right - left)
     box_h = clamp01(bottom - top)
+
+    # 检查bbox是否有效：宽度和高度必须大于最小阈值
+    if box_w < 0.01 or box_h < 0.01:
+        return None
+
     return box_cx, box_cy, box_w, box_h
 
 
@@ -386,6 +394,10 @@ def crop_split(
 
         # 步骤 4: 把 bbox 重映射到 crop 坐标系
         crop_box = remap_box_to_crop(box_xyxy, crop_xyxy)
+        if crop_box is None:
+            # bbox 过小或无效，跳过此样本
+            stats["skipped_invalid_crop"] += 1
+            continue
 
         # 步骤 5: 把关键点重映射到 crop 坐标系
         crop_keypoints = remap_keypoints_to_crop(obj.keypoints, width, height, crop_xyxy)

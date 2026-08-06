@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m py_compile call_entrance_pose/crop_yolo_fuel_pose_dataset.py)",
+      "Bash(python -m py_compile call_entrance_pose/train_yolo_fuel_pose_crop.py)"
+    ]
+  }
+}
