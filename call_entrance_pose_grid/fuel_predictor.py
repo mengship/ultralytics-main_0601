@@ -126,8 +126,8 @@ def predict(
     args.det_conf = det_conf
     args.pose_conf = pose_conf
     args.imgsz = imgsz
-    args.box_padding = box_padding
     args.direction = direction
+    args.min_keypoint_conf = min_keypoint_conf
     args.save_vis = False
     args.vis_dir = None
     args.crop_dir = None
