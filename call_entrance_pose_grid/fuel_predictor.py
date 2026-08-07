@@ -45,8 +45,8 @@ def predict(
     det_conf: float = 0.25,
     pose_conf: float = 0.25,
     imgsz: int = 640,
-    box_padding: float = 0.08,
     direction: str = "max_full_span",
+    min_keypoint_conf: float = 0.6,
     cache_models: bool = True,
 ) -> Dict:
     """预测单张油表图片
@@ -60,8 +60,8 @@ def predict(
         det_conf: 检测置信度阈值 (默认 0.25)
         pose_conf: 姿态置信度阈值 (默认 0.25)
         imgsz: 推理图像尺寸 (默认 640)
-        box_padding: 检测框扩大比例 (默认 0.08 = 8%)
         direction: 指针油表角度方向规则 (默认 "max_full_span")
+        min_keypoint_conf: 最小关键点置信度阈值 (默认 0.6)
         cache_models: 是否缓存模型，避免重复加载 (默认 True)
 
     Returns:
