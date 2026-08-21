@@ -455,6 +455,7 @@ def crop_split(
             cls=obj.cls,
             box=crop_box,
             keypoints=crop_keypoints,
+            visibilities=obj.visibilities,  # 保留可见性标记
         )
 
         # 生成唯一文件名
