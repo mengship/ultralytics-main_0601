@@ -124,27 +124,52 @@ def find_image_file(images_dir: Path, stem: str) -> Optional[Path]:
     return matches[0] if matches else None
 
 
-def parse_label_line(line: str) -> Optional[Tuple[int, Tuple[float, ...], Tuple[float, ...]]]:
+def parse_label_line(line: str) -> Optional[Tuple[int, Tuple[float, ...], Tuple[float, ...], Optional[Tuple[int, ...]]]]:
     """解析单行 YOLO Pose 标签。
 
-    格式：class cx cy w h empty_x empty_y full_x full_y tip_x tip_y
+    支持两种格式：
+    1. 不带可见性: class cx cy w h empty_x empty_y full_x full_y tip_x tip_y (11个值)
+    2. 带可见性:   class cx cy w h empty_x empty_y v1 full_x full_y v2 tip_x tip_y v3 (14个值)
 
     Returns:
-        (class_id, bbox, keypoints) 或 None
+        (class_id, bbox, keypoints, visibilities) 或 None
         bbox: (cx, cy, w, h) 归一化坐标
         keypoints: (empty_x, empty_y, full_x, full_y, tip_x, tip_y) 归一化坐标
+        visibilities: (v1, v2, v3) 可见性标记，如果不存在则为None
     """
     values = line.strip().split()
-    if len(values) < 11:  # class + 4 bbox + 6 keypoints
-        return None
 
-    try:
-        nums = [float(v) for v in values[:11]]
-        cls = int(round(nums[0]))
-        bbox = tuple(nums[1:5])  # cx, cy, w, h
-        keypoints = tuple(nums[5:11])  # empty_x, empty_y, full_x, full_y, tip_x, tip_y
-        return cls, bbox, keypoints
-    except (ValueError, IndexError):
+    # 判断格式：14个值（带v）或 11个值（不带v）
+    if len(values) == 14:
+        # 带可见性标记的格式
+        try:
+            cls = int(float(values[0]))
+            bbox = tuple(float(v) for v in values[1:5])  # cx, cy, w, h
+            # 提取关键点坐标，跳过可见性标记
+            keypoints = (
+                float(values[5]), float(values[6]),    # empty_x, empty_y (v在values[7])
+                float(values[8]), float(values[9]),    # full_x, full_y (v在values[10])
+                float(values[11]), float(values[12]),  # tip_x, tip_y (v在values[13])
+            )
+            visibilities = (
+                int(float(values[7])),   # empty可见性
+                int(float(values[10])),  # full可见性
+                int(float(values[13])),  # tip可见性
+            )
+            return cls, bbox, keypoints, visibilities
+        except (ValueError, IndexError):
+            return None
+    elif len(values) >= 11:
+        # 不带可见性标记的格式（原有逻辑）
+        try:
+            nums = [float(v) for v in values[:11]]
+            cls = int(round(nums[0]))
+            bbox = tuple(nums[1:5])  # cx, cy, w, h
+            keypoints = tuple(nums[5:11])  # empty_x, empty_y, full_x, full_y, tip_x, tip_y
+            return cls, bbox, keypoints, None
+        except (ValueError, IndexError):
+            return None
+    else:
         return None
 
 
@@ -317,12 +342,31 @@ def format_label_row(
     cls: int,
     bbox: Tuple[float, float, float, float],
     keypoints: Tuple[float, ...],
+    visibilities: Optional[Tuple[int, ...]] = None,
 ) -> str:
-    """格式化 YOLO Pose 标签行。"""
-    values = [float(cls)]
-    values.extend(bbox)
-    values.extend(keypoints)
-    return " ".join([str(int(values[0]))] + [f"{v:.6f}" for v in values[1:]])
+    """格式化 YOLO Pose 标签行。
+
+    支持两种格式：
+    1. 不带可见性: class cx cy w h x1 y1 x2 y2 x3 y3
+    2. 带可见性:   class cx cy w h x1 y1 v1 x2 y2 v2 x3 y3 v3
+    """
+    parts = [str(cls)]
+
+    # bbox
+    parts.extend([f"{v:.6f}" for v in bbox])
+
+    # keypoints
+    if visibilities is not None:
+        # 带可见性标记的格式: x1 y1 v1 x2 y2 v2 x3 y3 v3
+        for i in range(0, len(keypoints), 2):
+            parts.append(f"{keypoints[i]:.6f}")      # x
+            parts.append(f"{keypoints[i+1]:.6f}")    # y
+            parts.append(str(visibilities[i // 2]))   # v
+    else:
+        # 不带可见性标记的格式: x1 y1 x2 y2 x3 y3
+        parts.extend([f"{v:.6f}" for v in keypoints])
+
+    return " ".join(parts)
 
 
 def ensure_empty_dir(path: Path) -> None:
@@ -389,7 +433,7 @@ def crop_split(
             stats["skipped_invalid_label"] += 1
             continue
 
-        cls, bbox_norm, keypoints_norm = parsed
+        cls, bbox_norm, keypoints_norm, visibilities = parsed
 
         # 步骤 1: 将归一化的 bbox 还原到原图像素坐标
         bbox_xyxy = denormalize_bbox(bbox_norm, img_width, img_height)
@@ -418,7 +462,7 @@ def crop_split(
 
         cv2.imwrite(str(out_images_dir / crop_image_name), crop_image)
         (out_labels_dir / crop_label_name).write_text(
-            format_label_row(cls, crop_bbox, crop_keypoints) + "\n",
+            format_label_row(cls, crop_bbox, crop_keypoints, visibilities) + "\n",
             encoding="utf-8",
         )
 
