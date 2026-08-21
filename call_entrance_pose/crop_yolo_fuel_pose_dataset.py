@@ -43,6 +43,7 @@ class PoseObject:
     cls: int
     box: Tuple[float, float, float, float]  # cx, cy, w, h (normalized)
     keypoints: Dict[str, Tuple[float, float]]  # {name: (x, y)} normalized
+    visibilities: Optional[Dict[str, int]] = None  # {name: visibility} 可选的可见性标记
 
 
 def default_data_path() -> Path:
@@ -132,21 +133,50 @@ def find_image_file(images_dir: Path, stem: str) -> Optional[Path]:
 
 def parse_label_line(line: str) -> Optional[PoseObject]:
     """解析单行 YOLO Pose 标签：
-    class cx cy w h center_x center_y tip_x tip_y empty_x empty_y full_x full_y
+    支持两种格式：
+    1. 不带可见性: class cx cy w h center_x center_y tip_x tip_y empty_x empty_y full_x full_y
+    2. 带可见性:   class cx cy w h center_x center_y v1 tip_x tip_y v2 empty_x empty_y v3 full_x full_y v4
     """
     values = line.strip().split()
-    if len(values) < 13:
-        return None
 
-    nums = [float(v) for v in values[:13]]
-    cls = int(round(nums[0]))
-    box = tuple(nums[1:5])  # type: ignore[assignment]
-    key_values = nums[5:13]
-    keypoints = {
-        name: (key_values[i * 2], key_values[i * 2 + 1])
-        for i, name in enumerate(KEYPOINT_ORDER)
-    }
-    return PoseObject(cls=cls, box=box, keypoints=keypoints)
+    # 判断格式：13个值（不带v）或 17个值（带v）
+    if len(values) == 17:
+        # 带可见性标记的格式
+        try:
+            cls = int(float(values[0]))
+            box = tuple(float(v) for v in values[1:5])  # type: ignore[assignment]
+            # 跳过可见性标记，只提取坐标
+            keypoints = {
+                "center": (float(values[5]), float(values[6])),   # v在values[7]
+                "tip":    (float(values[8]), float(values[9])),   # v在values[10]
+                "empty":  (float(values[11]), float(values[12])), # v在values[13]
+                "full":   (float(values[14]), float(values[15])), # v在values[16]
+            }
+            visibilities = {
+                "center": int(float(values[7])),
+                "tip":    int(float(values[10])),
+                "empty":  int(float(values[13])),
+                "full":   int(float(values[16])),
+            }
+            return PoseObject(cls=cls, box=box, keypoints=keypoints, visibilities=visibilities)
+        except (ValueError, IndexError):
+            return None
+    elif len(values) >= 13:
+        # 不带可见性标记的格式（原有逻辑）
+        try:
+            nums = [float(v) for v in values[:13]]
+            cls = int(round(nums[0]))
+            box = tuple(nums[1:5])  # type: ignore[assignment]
+            key_values = nums[5:13]
+            keypoints = {
+                name: (key_values[i * 2], key_values[i * 2 + 1])
+                for i, name in enumerate(KEYPOINT_ORDER)
+            }
+            return PoseObject(cls=cls, box=box, keypoints=keypoints, visibilities=None)
+        except (ValueError, IndexError):
+            return None
+    else:
+        return None
 
 
 def load_label_file(label_path: Path) -> List[PoseObject]:
@@ -283,12 +313,31 @@ def remap_keypoints_to_crop(
 
 
 def format_label_row(obj: PoseObject) -> str:
-    """写回 YOLO Pose 标签行，顺序必须和训练时保持一致。"""
-    values: List[float] = [float(obj.cls)]
-    values.extend(obj.box)
-    for name in KEYPOINT_ORDER:
-        values.extend(obj.keypoints[name])
-    return " ".join([str(int(values[0]))] + [f"{v:.6f}" for v in values[1:]])
+    """写回 YOLO Pose 标签行，顺序必须和训练时保持一致。
+
+    支持两种格式：
+    1. 不带可见性: class cx cy w h x1 y1 x2 y2 x3 y3 x4 y4
+    2. 带可见性:   class cx cy w h x1 y1 v1 x2 y2 v2 x3 y3 v3 x4 y4 v4
+    """
+    parts = [str(obj.cls)]
+
+    # bbox
+    parts.extend([f"{v:.6f}" for v in obj.box])
+
+    # keypoints
+    if obj.visibilities is not None:
+        # 带可见性标记的格式: x y v
+        for name in KEYPOINT_ORDER:
+            x, y = obj.keypoints[name]
+            v = obj.visibilities[name]
+            parts.extend([f"{x:.6f}", f"{y:.6f}", str(v)])
+    else:
+        # 不带可见性标记的格式: x y
+        for name in KEYPOINT_ORDER:
+            x, y = obj.keypoints[name]
+            parts.extend([f"{x:.6f}", f"{y:.6f}"])
+
+    return " ".join(parts)
 
 
 def ensure_empty_dir(path: Path) -> None:
