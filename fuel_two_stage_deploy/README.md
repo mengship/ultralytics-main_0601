@@ -29,13 +29,13 @@ python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 mkdir -p models output
-python3 run.py --source /path/to/image.jpg
+python3 run.py /path/to/image.jpg
 ```
 
 默认使用 CPU。需要使用第一张 GPU 时：
 
 ```bash
-DEVICE=0 python3 run.py --source /path/to/image.jpg
+DEVICE=0 python3 run.py /path/to/image.jpg
 ```
 
 结果 CSV 写入 `output/fuel_two_stage_predictions.csv`。部署入口不保存可视化图片和裁剪图片。

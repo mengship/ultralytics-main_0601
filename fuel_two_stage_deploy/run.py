@@ -12,7 +12,7 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="识别单张油表图片")
-    parser.add_argument("--source", required=True, help="待识别的单张图片路径")
+    parser.add_argument("source", help="待识别的单张图片路径")
     return parser.parse_args()
 
 
