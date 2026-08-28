@@ -3,35 +3,32 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="识别单张油表图片")
-    parser.add_argument("source", help="待识别的单张图片路径")
-    return parser.parse_args()
+# 在这里指定每次需要识别的单张图片。
+SOURCE_IMAGE = "/home/wang/datasets/output0825/2026-08-25/77912.jpg"
+
 
 
 def main() -> None:
-    args = parse_args()
     script_dir = Path(__file__).resolve().parent
-    source = Path(args.source).expanduser().resolve()
+    source = Path(SOURCE_IMAGE).expanduser().resolve()
     if not source.is_file():
-        raise FileNotFoundError(f"请输入有效的单张图片路径，不支持目录: {source}")
+        raise FileNotFoundError(f"请在 SOURCE_IMAGE 中配置有效的单张图片路径: {source}")
 
     command = [
         sys.executable,
         str(script_dir / "predict_fuel_two_stage.py"),
         "--det-model",
-        str(script_dir / "models" / "detector.pt"),
+        str("/home/wang/ultralytics-main_0601/runs/detect/runs/gauge_detect/detect_pointer_grid-4/weights/best.pt"),
         "--pointer-pose-model",
-        str(script_dir / "models" / "pointer_pose.pt"),
+        str("/home/wang/ultralytics-main_0601/runs/pose/runs/fuel_pose/pose_crop_4kpt-16/weights/best.pt"),
         "--grid-pose-model",
-        str(script_dir / "models" / "grid_pose.pt"),
+        str("/home/wang/ultralytics-main_0601/runs/pose/runs/grid_pose/grid_pose_3kpt-10/weights/best.pt"),
         "--source",
         str(source),
         "--det-conf",
