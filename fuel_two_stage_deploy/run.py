@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import csv
+import json
 import os
 import subprocess
 import sys
@@ -20,6 +22,7 @@ def main() -> None:
     if not source.is_file():
         raise FileNotFoundError(f"请在 SOURCE_IMAGE 中配置有效的单张图片路径: {source}")
 
+    output_csv = script_dir / "output" / "fuel_two_stage_predictions.csv"
     command = [
         sys.executable,
         str(script_dir / "predict_fuel_two_stage.py"),
@@ -42,11 +45,19 @@ def main() -> None:
         "--direction",
         "max_full_span",
         "--output-csv",
-        str(script_dir / "output" / "fuel_two_stage_predictions.csv"),
+        str(output_csv),
         "--device",
         os.environ.get("DEVICE", "cpu"),
     ]
     subprocess.run(command, check=True)
+
+    with output_csv.open("r", encoding="utf-8", newline="") as file:
+        result = next(csv.DictReader(file), None)
+    if result is None:
+        raise RuntimeError(f"没有读取到预测结果: {output_csv}")
+
+    print("\n模型输出结果:")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
