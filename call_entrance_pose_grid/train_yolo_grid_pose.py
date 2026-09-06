@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--device", default="0", help="CUDA device, mps, or cpu.")
-    parser.add_argument("--patience", type=int, default=80)
+    # parser.add_argument("--patience", type=int, default=80)
     parser.add_argument("--project", default="runs/grid_pose")
     parser.add_argument("--name", default="grid_pose_3kpt")
     parser.add_argument("--exist-ok", action="store_true")
@@ -107,7 +107,7 @@ def main() -> None:
         imgsz=args.imgsz,
         batch=args.batch,
         device=args.device,
-        patience=args.patience,
+        # patience=args.patience,  # 早停逻辑已注释
         project=args.project,
         name=args.name,
         exist_ok=args.exist_ok,
