@@ -61,12 +61,12 @@ def parse_args() -> argparse.Namespace:
         default="0",
         help="训练设备：CUDA 设备号、'mps' 或 'cpu'",
     )
-    parser.add_argument(
-        "--patience",
-        type=int,
-        default=80,
-        help="早停轮数",
-    )
+    # parser.add_argument(
+    #     "--patience",
+    #     type=int,
+    #     default=80,
+    #     help="早停轮数",
+    # )
     parser.add_argument(
         "--project",
         default="runs/gauge_detect",
@@ -129,7 +129,7 @@ def main() -> None:
     print(f"批次大小: {args.batch}")
     print(f"训练设备: {args.device}")
     print(f"旋转增强: ±{args.degrees}°")
-    print(f"早停轮数: {args.patience}")
+    # print(f"早停轮数: {args.patience}")
     print(f"项目目录: {args.project}")
     print(f"实验名称: {args.name}")
     print("=" * 70)
@@ -145,7 +145,7 @@ def main() -> None:
         imgsz=args.imgsz,
         batch=args.batch,
         device=args.device,
-        patience=args.patience,
+        # patience=args.patience,  # 早停逻辑已注释
         project=args.project,
         name=args.name,
         exist_ok=args.exist_ok,
