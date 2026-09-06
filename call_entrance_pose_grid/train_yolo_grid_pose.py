@@ -107,7 +107,7 @@ def main() -> None:
         imgsz=args.imgsz,
         batch=args.batch,
         device=args.device,
-        # patience=args.patience,  # 早停逻辑已注释
+        patience=0,  # 禁用早停逻辑
         project=args.project,
         name=args.name,
         exist_ok=args.exist_ok,
